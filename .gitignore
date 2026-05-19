@@ -1,0 +1,20 @@
+node_modules/
+.env
+.env.*.local
+dist/
+build/
+coverage/
+
+# Server
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
