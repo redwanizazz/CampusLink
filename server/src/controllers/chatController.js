@@ -5,52 +5,44 @@ const getChats = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Find all chat IDs the user is a part of
-    const userMemberships = await ChatMember.findAll({
+    const memberships = await ChatMember.findAll({
       where: { user_id: userId },
       attributes: ['chat_id']
     });
-    
-    const chatIds = userMemberships.map(m => m.chat_id);
+    const chatIds = memberships.map(m => m.chat_id);
 
-    // Get chats with other members and latest message
+    if (chatIds.length === 0) return res.status(200).json([]);
+
     const chats = await Chat.findAll({
-      where: { id: { [Op.in]: chatIds }, is_group: false },
+      where: { id: { [Op.in]: chatIds }, type: 'direct' },
       include: [
         {
           model: ChatMember,
           where: { user_id: { [Op.ne]: userId } },
-          include: [
-            { model: User, attributes: ['id', 'full_name', 'avatar_url', 'role'], include: [Department] }
-          ]
+          include: [{ model: User, attributes: ['id', 'full_name', 'avatar_url', 'role'], include: [Department] }]
         },
         {
           model: Message,
           limit: 1,
-          order: [['created_at', 'DESC']]
+          order: [['sent_at', 'DESC']]
         }
       ]
     });
 
-    // Format output
-    const formattedChats = chats.map(chat => {
-      const otherUser = chat.ChatMembers[0]?.User;
-      const latestMessage = chat.Messages[0];
-      return {
-        id: chat.id,
-        otherUser,
-        latestMessage
-      };
-    });
+    const formatted = chats.map(chat => ({
+      id: chat.id,
+      type: chat.type,
+      otherUser: chat.ChatMembers[0]?.User,
+      latestMessage: chat.Messages[0] || null
+    }));
 
-    // Sort by latest message descending
-    formattedChats.sort((a, b) => {
+    formatted.sort((a, b) => {
       if (!a.latestMessage) return 1;
       if (!b.latestMessage) return -1;
-      return new Date(b.latestMessage.created_at) - new Date(a.latestMessage.created_at);
+      return new Date(b.latestMessage.sent_at) - new Date(a.latestMessage.sent_at);
     });
 
-    res.status(200).json(formattedChats);
+    res.status(200).json(formatted);
   } catch (error) {
     console.error('Error fetching chats:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -64,18 +56,12 @@ const getMessages = async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const offset = parseInt(req.query.offset) || 0;
 
-    // Verify user is in this chat
-    const isMember = await ChatMember.findOne({
-      where: { chat_id: chatId, user_id: userId }
-    });
-
-    if (!isMember) {
-      return res.status(403).json({ error: 'Not authorized to view these messages' });
-    }
+    const isMember = await ChatMember.findOne({ where: { chat_id: chatId, user_id: userId } });
+    if (!isMember) return res.status(403).json({ error: 'Not authorized to view these messages' });
 
     const messages = await Message.findAll({
       where: { chat_id: chatId },
-      order: [['created_at', 'ASC']],
+      order: [['sent_at', 'ASC']],
       limit,
       offset
     });
@@ -91,28 +77,50 @@ const getChatByUserId = async (req, res) => {
   try {
     const { targetUserId } = req.params;
     const userId = req.user.id;
-    
+
     const senderChats = await ChatMember.findAll({ where: { user_id: userId } });
     const receiverChats = await ChatMember.findAll({ where: { user_id: targetUserId } });
-    
+
     const senderChatIds = senderChats.map(c => c.chat_id);
     const receiverChatIds = receiverChats.map(c => c.chat_id);
-    
     const commonChatId = senderChatIds.find(id => receiverChatIds.includes(id));
 
-    if (!commonChatId) {
-       return res.status(200).json(null); // No chat exists yet
-    }
-
+    if (!commonChatId) return res.status(200).json(null);
     res.status(200).json({ chat_id: commonChatId });
   } catch (error) {
     console.error('Error finding chat by user:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-}
-
-module.exports = {
-  getChats,
-  getMessages,
-  getChatByUserId
 };
+
+const createOrGetDirectChat = async (req, res) => {
+  try {
+    const { targetUserId } = req.body;
+    const userId = req.user.id;
+
+    if (parseInt(targetUserId) === userId) {
+      return res.status(400).json({ error: 'Cannot chat with yourself' });
+    }
+
+    const senderChats = await ChatMember.findAll({ where: { user_id: userId } });
+    const receiverChats = await ChatMember.findAll({ where: { user_id: targetUserId } });
+    const senderIds = senderChats.map(c => c.chat_id);
+    const receiverIds = receiverChats.map(c => c.chat_id);
+    const commonId = senderIds.find(id => receiverIds.includes(id));
+
+    if (commonId) return res.status(200).json({ chat_id: commonId });
+
+    const chat = await Chat.create({ type: 'direct', created_by: userId });
+    await ChatMember.bulkCreate([
+      { chat_id: chat.id, user_id: userId },
+      { chat_id: chat.id, user_id: targetUserId }
+    ]);
+
+    res.status(201).json({ chat_id: chat.id });
+  } catch (error) {
+    console.error('Error creating chat:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = { getChats, getMessages, getChatByUserId, createOrGetDirectChat };

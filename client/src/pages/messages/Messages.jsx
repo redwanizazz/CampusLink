@@ -2,10 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getChats, getMessages, getChatByUserId } from '../../api/chat';
 import { getProfile } from '../../api/user';
+import { uploadFile } from '../../api/upload';
 import { useSocketStore } from '../../store/useSocketStore';
 import { useAuthStore } from '../../store/useAuthStore';
-import { Send, Image as ImageIcon } from 'lucide-react';
+import Avatar from '../../components/ui/Avatar';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Send, Paperclip, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+
+const resolveUrl = (url) => url?.startsWith('http') ? url : `${API_BASE}${url}`;
 
 const Messages = () => {
   const [searchParams] = useSearchParams();
@@ -13,13 +20,17 @@ const Messages = () => {
 
   const { socket, connect } = useSocketStore();
   const { user: currentUser } = useAuthStore();
-  
+
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loadingChats, setLoadingChats] = useState(true);
-  
+  const [isTyping, setIsTyping] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const typingTimer = useRef(null);
+  const fileInputRef = useRef(null);
+
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -28,60 +39,65 @@ const Messages = () => {
   }, [connect]);
 
   useEffect(() => {
-    if (initialUserId) {
-      initializeDirectChat(initialUserId);
-    }
+    if (initialUserId) initializeDirectChat(initialUserId);
   }, [initialUserId]);
 
   useEffect(() => {
-    if (activeChat) {
+    if (activeChat?.id && !activeChat.id.toString().startsWith('temp_')) {
+      socket?.emit('join_chat', activeChat.id);
       fetchMessages(activeChat.id);
     }
-  }, [activeChat]);
+    return () => {
+      if (activeChat?.id) socket?.emit('leave_chat', activeChat.id);
+    };
+  }, [activeChat?.id]);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleReceiveMessage = (message) => {
-      // If the message belongs to the current open chat, append it
       if (activeChat && message.chat_id === activeChat.id) {
-        setMessages((prev) => [...prev, message]);
+        setMessages(prev => [...prev, message]);
         scrollToBottom();
       }
-
-      // Re-order and update the chats list on the left sidebar
-      setChats((prevChats) => {
-        let existingChatIndex = prevChats.findIndex(c => c.id === message.chat_id);
-        let updatedChats = [...prevChats];
-
-        if (existingChatIndex >= 0) {
-          const chatToUpdate = { ...updatedChats[existingChatIndex], latestMessage: message };
-          updatedChats.splice(existingChatIndex, 1);
-          updatedChats.unshift(chatToUpdate);
-        } else {
-          // It's a new chat, we might want to refetch chats entirely 
-          // or construct a temporary object. For simplicity, refetch.
-          fetchChats();
+      setChats(prev => {
+        const idx = prev.findIndex(c => c.id === message.chat_id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          const [chat] = updated.splice(idx, 1);
+          return [{ ...chat, latestMessage: message }, ...updated];
         }
-        return updatedChats;
+        fetchChats();
+        return prev;
       });
     };
 
+    const handleTyping = ({ userId: uid }) => {
+      if (uid !== currentUser.id) setIsTyping(true);
+    };
+
+    const handleStopTyping = () => setIsTyping(false);
+
     socket.on('receiveMessage', handleReceiveMessage);
-    return () => socket.off('receiveMessage', handleReceiveMessage);
-  }, [socket, activeChat]);
+    socket.on('typing', handleTyping);
+    socket.on('stop_typing', handleStopTyping);
+
+    return () => {
+      socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('typing', handleTyping);
+      socket.off('stop_typing', handleStopTyping);
+    };
+  }, [socket, activeChat, currentUser]);
 
   const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   };
 
   const fetchChats = async () => {
     try {
       const data = await getChats();
       setChats(data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load chats');
     } finally {
       setLoadingChats(false);
@@ -93,64 +109,61 @@ const Messages = () => {
       const data = await getMessages(chatId);
       setMessages(data);
       scrollToBottom();
-    } catch (error) {
+    } catch {
       toast.error('Failed to load messages');
     }
   };
 
   const initializeDirectChat = async (targetUserId) => {
     try {
-      const existingChat = await getChatByUserId(targetUserId);
-      if (existingChat && existingChat.chat_id) {
-        // Find it in our list and set active
-        const chatObj = chats.find(c => c.id === existingChat.chat_id);
-        if (chatObj) setActiveChat(chatObj);
-        else {
-          // We need to fetch the target user profile to create a mock chat obj
+      const existing = await getChatByUserId(targetUserId);
+      if (existing?.chat_id) {
+        const chatObj = chats.find(c => c.id === existing.chat_id);
+        if (chatObj) {
+          setActiveChat(chatObj);
+        } else {
           const profileData = await getProfile(targetUserId);
-          setActiveChat({ id: existingChat.chat_id, otherUser: profileData.user });
+          setActiveChat({ id: existing.chat_id, otherUser: profileData.user });
         }
       } else {
-        // It's a brand new chat that doesn't exist yet in the DB
         const profileData = await getProfile(targetUserId);
-        setActiveChat({ id: 'temp_' + targetUserId, otherUser: profileData.user });
+        setActiveChat({ id: `temp_${targetUserId}`, otherUser: profileData.user });
         setMessages([]);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
     }
+  };
+
+  const handleTypingEmit = () => {
+    if (!activeChat || activeChat.id.toString().startsWith('temp_')) return;
+    socket?.emit('typing', { chatId: activeChat.id });
+    clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(() => {
+      socket?.emit('stop_typing', { chatId: activeChat.id });
+    }, 1500);
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeChat || !socket) return;
 
-    const payload = {
+    socket.emit('sendMessage', {
       receiverId: activeChat.otherUser.id,
       content: newMessage,
-    };
-
-    socket.emit('sendMessage', payload, (response) => {
+    }, (response) => {
       if (response.success) {
-        setMessages((prev) => [...prev, response.message]);
         setNewMessage('');
-        scrollToBottom();
-        
-        // If it was a temp chat, refetch chats to get the real DB ID
         if (activeChat.id.toString().startsWith('temp_')) {
           setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
           fetchChats();
         } else {
-          // Update local chat list latest message
           setChats(prev => {
-            let updated = [...prev];
-            const idx = updated.findIndex(c => c.id === response.message.chat_id);
-            if (idx >= 0) {
-               updated[idx].latestMessage = response.message;
-               const [moved] = updated.splice(idx, 1);
-               updated.unshift(moved);
-            }
-            return updated;
+            const idx = prev.findIndex(c => c.id === response.message.chat_id);
+            if (idx < 0) return prev;
+            const updated = [...prev];
+            const [chat] = updated.splice(idx, 1);
+            return [{ ...chat, latestMessage: response.message }, ...updated];
           });
         }
       } else {
@@ -159,42 +172,114 @@ const Messages = () => {
     });
   };
 
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !activeChat || !socket) return;
+    e.target.value = '';
+
+    setIsUploading(true);
+    try {
+      const { url, originalName, mimeType } = await uploadFile(file);
+      const fileContent = JSON.stringify({ url, originalName, mimeType });
+
+      socket.emit('sendMessage', {
+        receiverId: activeChat.otherUser.id,
+        content: fileContent,
+        attachmentUrl: url,
+      }, (response) => {
+        if (!response?.success) {
+          toast.error('Failed to send file');
+        } else if (activeChat.id.toString().startsWith('temp_')) {
+          setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
+          fetchChats();
+        }
+      });
+    } catch {
+      toast.error('Upload failed. Check file type and size (max 10 MB).');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const renderMessageContent = (msg, isMine) => {
+    if (msg.type !== 'file') {
+      return <p className="text-sm break-words">{msg.content}</p>;
+    }
+    try {
+      const { url, originalName, mimeType } = JSON.parse(msg.content);
+      const fileUrl = resolveUrl(url);
+      if (mimeType?.startsWith('image/')) {
+        return (
+          <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+            <img src={fileUrl} alt={originalName} className="max-w-full rounded-lg max-h-48 object-cover" />
+          </a>
+        );
+      }
+      return (
+        <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+          className={`flex items-center gap-2 text-sm underline break-all ${isMine ? 'text-indigo-100' : 'text-indigo-600 dark:text-indigo-400'}`}>
+          <Paperclip className="w-4 h-4 flex-shrink-0" />
+          <span>{originalName}</span>
+        </a>
+      );
+    } catch {
+      const fileUrl = resolveUrl(msg.content);
+      return (
+        <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+          className={`flex items-center gap-2 text-sm underline ${isMine ? 'text-indigo-100' : 'text-indigo-600'}`}>
+          <Paperclip className="w-4 h-4" /> Attachment
+        </a>
+      );
+    }
+  };
+
+  const formatTime = (ts) => {
+    if (!ts) return '';
+    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="flex h-[calc(100vh-8rem)] bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      
-      {/* Sidebar - Chat List */}
-      <div className="w-1/3 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+
+      {/* Chat list sidebar */}
+      <div className="w-80 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Messages</h2>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loadingChats ? (
-            <div className="p-4 text-center text-gray-500">Loading...</div>
+            <div className="p-4 space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center space-x-3">
+                  <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : chats.length === 0 ? (
-            <div className="p-4 text-center text-gray-500 text-sm">No conversations yet. Discover people in the Network tab to start chatting!</div>
+            <p className="p-6 text-center text-sm text-gray-500">No conversations yet. Connect with people in the Network tab.</p>
           ) : (
-            chats.map((chat) => (
-              <div 
-                key={chat.id} 
+            chats.map(chat => (
+              <div
+                key={chat.id}
                 onClick={() => setActiveChat(chat)}
-                className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex items-center ${activeChat?.id === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''}`}
+                className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex items-center space-x-3 ${activeChat?.id === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''}`}
               >
-                <img 
-                  src={chat.otherUser?.avatar_url ? `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${chat.otherUser.avatar_url}` : 'https://via.placeholder.com/40'} 
-                  alt="" 
-                  className="w-10 h-10 rounded-full bg-gray-200 object-cover"
-                />
-                <div className="ml-3 flex-1 overflow-hidden">
+                <Avatar user={chat.otherUser} size="md" className="flex-shrink-0" />
+                <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline">
                     <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{chat.otherUser?.full_name}</h3>
                     {chat.latestMessage && (
-                      <span className="text-xs text-gray-500">
-                        {new Date(chat.latestMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <span className="text-xs text-gray-400 ml-1 flex-shrink-0">{formatTime(chat.latestMessage.sent_at)}</span>
                     )}
                   </div>
                   <p className="text-xs text-gray-500 truncate">
-                    {chat.latestMessage ? chat.latestMessage.content : 'New conversation'}
+                    {chat.latestMessage
+                      ? (chat.latestMessage.type === 'file' ? '📎 Attachment' : chat.latestMessage.content)
+                      : 'New conversation'}
                   </p>
                 </div>
               </div>
@@ -203,37 +288,27 @@ const Messages = () => {
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900">
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 min-w-0">
         {activeChat ? (
           <>
-            {/* Chat Header */}
-            <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center shadow-sm z-10">
-              <img 
-                src={activeChat.otherUser?.avatar_url ? `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${activeChat.otherUser.avatar_url}` : 'https://via.placeholder.com/40'} 
-                alt="" 
-                className="w-10 h-10 rounded-full bg-gray-200 object-cover"
-              />
-              <div className="ml-3">
+            <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-3 shadow-sm">
+              <Avatar user={activeChat.otherUser} size="md" />
+              <div>
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">{activeChat.otherUser?.full_name}</h3>
-                <p className="text-xs text-gray-500 capitalize">{activeChat.otherUser?.role}</p>
+                {isTyping && <p className="text-xs text-indigo-500 animate-pulse">typing...</p>}
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((msg, index) => {
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {messages.map((msg, i) => {
                 const isMine = msg.sender_id === currentUser.id;
                 return (
-                  <div key={index} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-sm ${
-                      isMine 
-                        ? 'bg-indigo-600 text-white rounded-br-sm' 
-                        : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-sm border border-gray-100 dark:border-gray-700'
-                    }`}>
-                      <p className="text-sm break-words">{msg.content}</p>
+                  <div key={i} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-sm ${isMine ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-sm border border-gray-100 dark:border-gray-700'}`}>
+                      {renderMessageContent(msg, isMine)}
                       <p className={`text-[10px] mt-1 text-right ${isMine ? 'text-indigo-200' : 'text-gray-400'}`}>
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatTime(msg.sent_at)}
                       </p>
                     </div>
                   </div>
@@ -242,23 +317,36 @@ const Messages = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
             <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
               <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
-                <button type="button" className="p-2 text-gray-500 hover:text-indigo-600 transition-colors">
-                  <ImageIcon className="w-5 h-5" />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  onChange={handleFileSelect}
+                />
+                <button
+                  type="button"
+                  disabled={isUploading || !activeChat}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isUploading
+                    ? <Loader2 className="w-5 h-5 animate-spin" />
+                    : <Paperclip className="w-5 h-5" />}
                 </button>
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={e => { setNewMessage(e.target.value); handleTypingEmit(); }}
                   placeholder="Type a message..."
-                  className="flex-1 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 rounded-full px-4 py-2 text-sm dark:text-white"
+                  className="flex-1 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 rounded-full px-4 py-2 text-sm dark:text-white transition-colors"
                 />
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={!newMessage.trim()}
-                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Send className="w-5 h-5 ml-0.5" />
                 </button>
@@ -266,9 +354,9 @@ const Messages = () => {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500 flex-col">
-            <Send className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-600" />
-            <p>Select a conversation to start messaging</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 space-y-3">
+            <Send className="w-16 h-16 text-gray-200 dark:text-gray-700" />
+            <p className="text-sm">Select a conversation or start a new one</p>
           </div>
         )}
       </div>

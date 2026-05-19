@@ -6,7 +6,8 @@ const authMiddleware = require('../middleware/auth');
 router.use(authMiddleware);
 
 router.get('/', chatController.getChats);
-router.get('/:chatId/messages', chatController.getMessages);
+router.post('/', chatController.createOrGetDirectChat);
 router.get('/user/:targetUserId', chatController.getChatByUserId);
+router.get('/:chatId/messages', chatController.getMessages);
 
 module.exports = router;

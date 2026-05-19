@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { UserPlus, UserCheck, MessageSquare, X } from 'lucide-react';
 import { Button } from '../ui/Button';
+import Avatar from '../ui/Avatar';
 
 const UserCard = ({ user, actionType, onAction, onSecondaryAction, isProcessing }) => {
   const renderAction = () => {
@@ -44,11 +45,7 @@ const UserCard = ({ user, actionType, onAction, onSecondaryAction, isProcessing 
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
       <div className="p-5 flex flex-col items-center text-center">
         <Link to={`/profile/${user.id}`}>
-          <img 
-            src={user.avatar_url ? `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${user.avatar_url}` : 'https://via.placeholder.com/150'} 
-            alt={user.full_name}
-            className="w-20 h-20 rounded-full object-cover border-2 border-gray-100 dark:border-gray-700 mb-3"
-          />
+          <Avatar user={user} size="xl" className="mb-3 border-2 border-gray-100 dark:border-gray-700" />
         </Link>
         <Link to={`/profile/${user.id}`}>
           <h3 className="text-lg font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400">
@@ -56,10 +53,9 @@ const UserCard = ({ user, actionType, onAction, onSecondaryAction, isProcessing 
           </h3>
         </Link>
         <p className="text-sm text-gray-500 dark:text-gray-400 capitalize mb-1">{user.role}</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4 line-clamp-1 text-ellipsis">
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4 line-clamp-1">
           {user.Department?.name || 'Unknown Department'}
         </p>
-        
         <div className="w-full mt-auto">
           {renderAction()}
         </div>

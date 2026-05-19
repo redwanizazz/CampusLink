@@ -1,91 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getProfile } from '../../api/user';
+import { sendRequest } from '../../api/connection';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Button } from '../../components/ui/Button';
-import { MapPin, Mail, Phone, Book } from 'lucide-react';
+import Avatar from '../../components/ui/Avatar';
+import { PostSkeleton } from '../../components/ui/Skeleton';
+import { Mail, Phone, Book, MessageSquare, UserPlus, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ProfileView = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const data = await getProfile(id);
-        setProfile(data);
-      } catch (error) {
-        toast.error('Failed to load profile');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, [id]);
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ['profile', id],
+    queryFn: () => getProfile(id)
+  });
 
-  if (loading) {
+  const connectMutation = useMutation({
+    mutationFn: () => sendRequest(parseInt(id)),
+    onSuccess: () => {
+      toast.success('Connection request sent!');
+      queryClient.invalidateQueries({ queryKey: ['profile', id] });
+    },
+    onError: (err) => toast.error(err.response?.data?.error || 'Failed to send request')
+  });
+
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden animate-pulse">
+          <div className="h-32 bg-gray-200 dark:bg-gray-700" />
+          <div className="px-6 py-4 flex items-end -mt-16">
+            <div className="w-32 h-32 rounded-full bg-gray-300 dark:bg-gray-600 border-4 border-white" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          <PostSkeleton /><PostSkeleton />
+        </div>
       </div>
     );
   }
 
-  if (!profile || !profile.user) return <div>User not found</div>;
+  if (!profile?.user) return <div className="p-8 text-gray-500">User not found.</div>;
 
-  const { user, recentPosts } = profile;
+  const { user, recentPosts, connectionStatus } = profile;
   const isOwnProfile = currentUser?.id === parseInt(id);
+
+  const renderConnectionButton = () => {
+    if (isOwnProfile) {
+      return <Button onClick={() => navigate('/profile/edit')}>Edit Profile</Button>;
+    }
+    if (connectionStatus === 'accepted') return null;
+    if (connectionStatus === 'pending') {
+      return (
+        <Button variant="secondary" disabled className="flex items-center">
+          <Clock className="w-4 h-4 mr-2" /> Pending
+        </Button>
+      );
+    }
+    return (
+      <Button onClick={() => connectMutation.mutate()} disabled={connectMutation.isPending} className="flex items-center">
+        <UserPlus className="w-4 h-4 mr-2" />
+        {connectMutation.isPending ? 'Sending...' : 'Connect'}
+      </Button>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      {/* Cover and Avatar Section */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-        <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+        <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600" />
         <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-end -mt-16 sm:-mt-20 relative z-10">
-          <img 
-            src={user.avatar_url ? `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${user.avatar_url}` : 'https://via.placeholder.com/150'} 
-            alt="Avatar" 
-            className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white dark:border-gray-800 object-cover bg-white"
-          />
+          <Avatar user={user} size="2xl" className="border-4 border-white dark:border-gray-800" />
           <div className="mt-4 sm:mt-0 sm:ml-6 flex-1">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user.full_name}</h1>
             <p className="text-gray-500 dark:text-gray-400 capitalize">{user.role} • {user.Department?.name}</p>
+            {user.batch && <p className="text-sm text-gray-400">Batch {user.batch}</p>}
           </div>
-          <div className="mt-4 sm:mt-0">
-            {isOwnProfile ? (
-              <Button onClick={() => window.location.href='/profile/edit'}>Edit Profile</Button>
-            ) : (
-              <Button>Connect</Button>
+          <div className="mt-4 sm:mt-0 flex space-x-2">
+            {!isOwnProfile && connectionStatus === 'accepted' && (
+              <Button variant="secondary" onClick={() => navigate(`/messages?user=${id}`)} className="flex items-center w-auto px-4">
+                <MessageSquare className="w-4 h-4 mr-2" /> Message
+              </Button>
             )}
+            {renderConnectionButton()}
           </div>
         </div>
       </div>
 
-      {/* About Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="col-span-1 space-y-6">
+        <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">About</h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
-              {user.bio || "No bio provided yet."}
-            </p>
-            
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">{user.bio || 'No bio provided yet.'}</p>
             <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center">
-                <Book className="w-4 h-4 mr-3 text-indigo-500" />
+                <Book className="w-4 h-4 mr-3 text-indigo-500 flex-shrink-0" />
                 <span>Batch {user.batch || 'N/A'}</span>
               </div>
               <div className="flex items-center">
-                <Mail className="w-4 h-4 mr-3 text-indigo-500" />
-                <span>{user.email}</span>
+                <Mail className="w-4 h-4 mr-3 text-indigo-500 flex-shrink-0" />
+                <span className="break-all">{user.email}</span>
               </div>
               {user.phone && (
                 <div className="flex items-center">
-                  <Phone className="w-4 h-4 mr-3 text-indigo-500" />
+                  <Phone className="w-4 h-4 mr-3 text-indigo-500 flex-shrink-0" />
                   <span>{user.phone}</span>
                 </div>
               )}
@@ -93,15 +117,15 @@ const ProfileView = () => {
           </div>
         </div>
 
-        <div className="col-span-2 space-y-6">
+        <div className="col-span-2 space-y-4">
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Recent Activity</h2>
-            {recentPosts && recentPosts.length > 0 ? (
+            {recentPosts?.length > 0 ? (
               <div className="space-y-4">
                 {recentPosts.map(post => (
                   <div key={post.id} className="border-b border-gray-200 dark:border-gray-700 pb-4 last:border-0">
-                    <p className="text-gray-800 dark:text-gray-200">{post.content}</p>
-                    <p className="text-xs text-gray-500 mt-2">{new Date(post.created_at).toLocaleDateString()}</p>
+                    <p className="text-gray-800 dark:text-gray-200 text-sm">{post.content}</p>
+                    <p className="text-xs text-gray-500 mt-1">{new Date(post.created_at).toLocaleDateString()}</p>
                   </div>
                 ))}
               </div>

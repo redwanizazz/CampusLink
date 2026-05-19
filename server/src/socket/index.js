@@ -1,94 +1,116 @@
 const jwt = require('jsonwebtoken');
 const { Chat, ChatMember, Message } = require('../models');
 
-// Memory map of userId -> socketId
+// userId -> socketId
 const connectedUsers = new Map();
 
+let _io = null;
+
+const emitNotification = (userId, payload) => {
+  if (_io) _io.to(`user:${userId}`).emit('notification', payload);
+};
+
 const initSocket = (io) => {
-  // Middleware for authenticating socket connections
+  _io = io;
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
-    if (!token) {
-      return next(new Error('Authentication error: Token missing'));
-    }
-
+    if (!token) return next(new Error('Authentication error: Token missing'));
     try {
-      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-      socket.user = decoded;
+      socket.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
       next();
-    } catch (err) {
+    } catch {
       next(new Error('Authentication error: Invalid token'));
     }
   });
 
   io.on('connection', (socket) => {
     const userId = socket.user.id;
-    
-    // Add to connected users map
     connectedUsers.set(userId, socket.id);
-    
-    // Broadcast user online status
+    socket.join(`user:${userId}`);
     io.emit('userOnline', userId);
 
+    // ─── join/leave chat rooms ───────────────────────────────────────────────
+    socket.on('join_chat', (chatId) => {
+      socket.join(`chat:${chatId}`);
+    });
+
+    socket.on('leave_chat', (chatId) => {
+      socket.leave(`chat:${chatId}`);
+    });
+
+    // ─── typing indicators ───────────────────────────────────────────────────
+    socket.on('typing', ({ chatId }) => {
+      socket.to(`chat:${chatId}`).emit('typing', { chatId, userId });
+    });
+
+    socket.on('stop_typing', ({ chatId }) => {
+      socket.to(`chat:${chatId}`).emit('stop_typing', { chatId, userId });
+    });
+
+    // ─── message_read ────────────────────────────────────────────────────────
+    socket.on('message_read', async ({ messageId, chatId }) => {
+      try {
+        const readAt = new Date();
+        await Message.update({ read_at: readAt }, { where: { id: messageId, read_at: null } });
+        socket.to(`chat:${chatId}`).emit('message_read', { messageId, readAt });
+      } catch (err) {
+        console.error('message_read error:', err);
+      }
+    });
+
+    // ─── send message ────────────────────────────────────────────────────────
     socket.on('sendMessage', async (data, callback) => {
       try {
         const { receiverId, content, attachmentUrl } = data;
         const senderId = socket.user.id;
 
-        // Ensure 1-on-1 Chat exists
-        let chat = await Chat.findOne({
-          where: { is_group: false },
-          include: [
-            { model: ChatMember, where: { user_id: senderId } },
-          ]
-        });
-
-        // The above query isn't perfect for finding exact 1-on-1. Let's do it manually for reliability in sqlite/mysql:
-        // Find all chats where sender is a member
+        // Find existing 1-on-1 chat between sender and receiver
         const senderChats = await ChatMember.findAll({ where: { user_id: senderId } });
         const receiverChats = await ChatMember.findAll({ where: { user_id: receiverId } });
-        
+
         const senderChatIds = senderChats.map(c => c.chat_id);
         const receiverChatIds = receiverChats.map(c => c.chat_id);
-        
         let commonChatId = senderChatIds.find(id => receiverChatIds.includes(id));
-        
+
         if (!commonChatId) {
-          // Create new chat
-          const newChat = await Chat.create({ is_group: false });
+          const newChat = await Chat.create({ type: 'direct', created_by: senderId });
           await ChatMember.bulkCreate([
-            { chat_id: newChat.id, user_id: senderId, role: 'member' },
-            { chat_id: newChat.id, user_id: receiverId, role: 'member' }
+            { chat_id: newChat.id, user_id: senderId },
+            { chat_id: newChat.id, user_id: receiverId }
           ]);
           commonChatId = newChat.id;
         }
 
-        // Create Message
         const message = await Message.create({
           chat_id: commonChatId,
           sender_id: senderId,
           content,
-          attachment_url: attachmentUrl
+          type: attachmentUrl ? 'file' : 'text',
         });
 
-        // Prepare message payload
-        const messagePayload = {
+        const payload = {
           id: message.id,
           chat_id: commonChatId,
           sender_id: senderId,
           content: message.content,
-          created_at: message.created_at,
-          attachment_url: message.attachment_url
+          type: message.type,
+          sent_at: message.sent_at,
+          read_at: null,
         };
 
-        // Send to receiver if online
+        // Broadcast to everyone in the chat room (sender included if they joined)
+        io.to(`chat:${commonChatId}`).emit('receiveMessage', payload);
+
+        // Direct-emit to receiver only if they haven't joined the room
         const receiverSocketId = connectedUsers.get(parseInt(receiverId));
         if (receiverSocketId) {
-          io.to(receiverSocketId).emit('receiveMessage', messagePayload);
+          const room = io.sockets.adapter.rooms.get(`chat:${commonChatId}`);
+          if (!room || !room.has(receiverSocketId)) {
+            io.to(receiverSocketId).emit('receiveMessage', payload);
+          }
         }
 
-        // Return success to sender
-        if (callback) callback({ success: true, message: messagePayload });
+        if (callback) callback({ success: true, message: payload });
       } catch (error) {
         console.error('Socket sendMessage error:', error);
         if (callback) callback({ success: false, error: 'Failed to send message' });
@@ -102,7 +124,4 @@ const initSocket = (io) => {
   });
 };
 
-module.exports = {
-  initSocket,
-  connectedUsers
-};
+module.exports = { initSocket, emitNotification, connectedUsers };

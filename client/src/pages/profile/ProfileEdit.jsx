@@ -4,6 +4,7 @@ import { updateProfile, uploadAvatar } from '../../api/user';
 import { getMe } from '../../api/auth';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import Avatar from '../../components/ui/Avatar';
 import toast from 'react-hot-toast';
 import { Camera } from 'lucide-react';
 
@@ -75,11 +76,7 @@ const ProfileEdit = () => {
         
         <div className="flex flex-col items-center mb-8">
           <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
-            <img 
-              src={user?.avatar_url ? `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000'}${user.avatar_url}` : 'https://via.placeholder.com/150'} 
-              alt="Avatar" 
-              className="w-32 h-32 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700 group-hover:opacity-75 transition-opacity"
-            />
+            <Avatar user={user} size="2xl" className="border-4 border-gray-200 dark:border-gray-700 group-hover:opacity-75 transition-opacity" />
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Camera className="w-8 h-8 text-white drop-shadow-md" />
             </div>

@@ -1,5 +1,6 @@
-const { User, Connection, Department } = require('../models');
+const { User, Connection, Department, Notification } = require('../models');
 const { Op } = require('sequelize');
+const { emitNotification } = require('../socket/index');
 
 const discoverUsers = async (req, res) => {
   try {
@@ -70,6 +71,19 @@ const sendRequest = async (req, res) => {
     });
 
     res.status(201).json({ message: 'Connection request sent' });
+
+    try {
+      const requester = await User.findByPk(requester_id, { attributes: ['full_name'] });
+      const notif = await Notification.create({
+        user_id: parseInt(addressee_id),
+        type: 'connection_request',
+        content: `${requester.full_name} sent you a connection request`,
+        link_url: '/network/requests',
+      });
+      emitNotification(parseInt(addressee_id), notif.toJSON());
+    } catch (e) {
+      console.error('Notification error (sendRequest):', e.message);
+    }
   } catch (error) {
     console.error('Error sending request:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -93,6 +107,19 @@ const acceptRequest = async (req, res) => {
     await connection.save();
 
     res.status(200).json({ message: 'Request accepted' });
+
+    try {
+      const acceptor = await User.findByPk(userId, { attributes: ['full_name'] });
+      const notif = await Notification.create({
+        user_id: connection.requester_id,
+        type: 'connection_accepted',
+        content: `${acceptor.full_name} accepted your connection request`,
+        link_url: `/profile/${userId}`,
+      });
+      emitNotification(connection.requester_id, notif.toJSON());
+    } catch (e) {
+      console.error('Notification error (acceptRequest):', e.message);
+    }
   } catch (error) {
     console.error('Error accepting request:', error);
     res.status(500).json({ error: 'Internal server error' });
