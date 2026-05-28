@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { updateProfile, uploadAvatar } from '../../api/user';
 import { getMe } from '../../api/auth';
@@ -15,12 +15,6 @@ const ProfileEdit = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const fileInputRef = useRef(null);
-
-  // Sync state if user changes
-  useEffect(() => {
-    setBio(user?.bio || '');
-    setPhone(user?.phone || '');
-  }, [user]);
 
   const handleAvatarClick = () => {
     fileInputRef.current.click();
@@ -75,16 +69,23 @@ const ProfileEdit = () => {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Edit Profile</h1>
         
         <div className="flex flex-col items-center mb-8">
-          <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+          <div
+            role="button"
+            tabIndex={0}
+            className="relative group cursor-pointer"
+            onClick={handleAvatarClick}
+            onKeyDown={e => e.key === 'Enter' && handleAvatarClick()}
+          >
             <Avatar user={user} size="2xl" className="border-4 border-gray-200 dark:border-gray-700 group-hover:opacity-75 transition-opacity" />
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera className="w-8 h-8 text-white drop-shadow-md" />
+              <Camera className="size-8 text-white drop-shadow-md" />
             </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              aria-label="Change avatar photo"
+              accept="image/*"
               onChange={handleFileChange}
             />
           </div>
@@ -93,15 +94,17 @@ const ProfileEdit = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Bio
             </label>
             <textarea
+              id="bio"
               rows={4}
+              aria-label="Bio"
               className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 rounded-md shadow-sm bg-white dark:bg-gray-800 dark:text-white"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us about yourself..."
+              placeholder="Tell us about yourself…"
             />
           </div>
 

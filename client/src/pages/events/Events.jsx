@@ -25,11 +25,11 @@ const Events = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Events</h1>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3">
           <Link to="/events/my-events" className="text-sm text-indigo-600 hover:underline">My Events</Link>
           {canCreate && (
-            <Link to="/events/create" className="flex items-center space-x-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-              <Plus className="w-4 h-4" /> <span>Create Event</span>
+            <Link to="/events/create" className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+              <Plus className="size-4" /> <span>Create Event</span>
             </Link>
           )}
         </div>
@@ -37,11 +37,11 @@ const Events = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => setUpcoming(!upcoming)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${upcoming ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-600 border-gray-300 dark:text-gray-300 dark:border-gray-600 hover:border-indigo-400'}`}>
+        <button type="button" onClick={() => setUpcoming(!upcoming)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${upcoming ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-600 border-gray-300 dark:text-gray-300 dark:border-gray-600 hover:border-indigo-400'}`}>
           Upcoming only
         </button>
         {LOCATION_TYPES.map(lt => (
-          <button key={lt} onClick={() => setLocFilter(locFilter === lt ? '' : lt)} className={`px-3 py-1.5 rounded-full text-xs font-medium border capitalize transition-colors ${locFilter === lt ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-600 border-gray-300 dark:text-gray-300 dark:border-gray-600 hover:border-indigo-400'}`}>
+          <button type="button" key={lt} onClick={() => setLocFilter(locFilter === lt ? '' : lt)} className={`px-3 py-1.5 rounded-full text-xs font-medium border capitalize transition-colors ${locFilter === lt ? 'bg-indigo-600 text-white border-indigo-600' : 'text-gray-600 border-gray-300 dark:text-gray-300 dark:border-gray-600 hover:border-indigo-400'}`}>
             {lt}
           </button>
         ))}

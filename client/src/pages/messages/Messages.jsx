@@ -218,7 +218,7 @@ const Messages = () => {
       return (
         <a href={fileUrl} target="_blank" rel="noopener noreferrer"
           className={`flex items-center gap-2 text-sm underline break-all ${isMine ? 'text-indigo-100' : 'text-indigo-600 dark:text-indigo-400'}`}>
-          <Paperclip className="w-4 h-4 flex-shrink-0" />
+          <Paperclip className="size-4 flex-shrink-0" />
           <span>{originalName}</span>
         </a>
       );
@@ -227,7 +227,7 @@ const Messages = () => {
       return (
         <a href={fileUrl} target="_blank" rel="noopener noreferrer"
           className={`flex items-center gap-2 text-sm underline ${isMine ? 'text-indigo-100' : 'text-indigo-600'}`}>
-          <Paperclip className="w-4 h-4" /> Attachment
+          <Paperclip className="size-4" /> Attachment
         </a>
       );
     }
@@ -250,8 +250,8 @@ const Messages = () => {
           {loadingChats ? (
             <div className="p-4 space-y-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center space-x-3">
-                  <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="size-10 rounded-full flex-shrink-0" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-3 w-24" />
                     <Skeleton className="h-3 w-40" />
@@ -265,8 +265,11 @@ const Messages = () => {
             chats.map(chat => (
               <div
                 key={chat.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setActiveChat(chat)}
-                className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex items-center space-x-3 ${activeChat?.id === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''}`}
+                onKeyDown={e => e.key === 'Enter' && setActiveChat(chat)}
+                className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex items-center gap-3 ${activeChat?.id === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''}`}
               >
                 <Avatar user={chat.otherUser} size="md" className="flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -292,7 +295,7 @@ const Messages = () => {
       <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 min-w-0">
         {activeChat ? (
           <>
-            <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-3 shadow-sm">
+            <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 shadow-sm">
               <Avatar user={activeChat.otherUser} size="md" />
               <div>
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">{activeChat.otherUser?.full_name}</h3>
@@ -304,7 +307,7 @@ const Messages = () => {
               {messages.map((msg, i) => {
                 const isMine = msg.sender_id === currentUser.id;
                 return (
-                  <div key={i} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-sm ${isMine ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-sm border border-gray-100 dark:border-gray-700'}`}>
                       {renderMessageContent(msg, isMine)}
                       <p className={`text-[10px] mt-1 text-right ${isMine ? 'text-indigo-200' : 'text-gray-400'}`}>
@@ -318,11 +321,12 @@ const Messages = () => {
             </div>
 
             <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-              <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                 <input
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
+                  aria-label="Attach file"
                   accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                   onChange={handleFileSelect}
                 />
@@ -333,14 +337,15 @@ const Messages = () => {
                   className="p-2 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isUploading
-                    ? <Loader2 className="w-5 h-5 animate-spin" />
-                    : <Paperclip className="w-5 h-5" />}
+                    ? <Loader2 className="size-5 animate-spin" />
+                    : <Paperclip className="size-5" />}
                 </button>
                 <input
                   type="text"
                   value={newMessage}
                   onChange={e => { setNewMessage(e.target.value); handleTypingEmit(); }}
-                  placeholder="Type a message..."
+                  placeholder="Type a message…"
+                  aria-label="Message"
                   className="flex-1 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 rounded-full px-4 py-2 text-sm dark:text-white transition-colors"
                 />
                 <button
@@ -348,14 +353,14 @@ const Messages = () => {
                   disabled={!newMessage.trim()}
                   className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  <Send className="w-5 h-5 ml-0.5" />
+                  <Send className="size-5 ml-0.5" />
                 </button>
               </form>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 space-y-3">
-            <Send className="w-16 h-16 text-gray-200 dark:text-gray-700" />
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3">
+            <Send className="size-16 text-gray-200 dark:text-gray-700" />
             <p className="text-sm">Select a conversation or start a new one</p>
           </div>
         )}

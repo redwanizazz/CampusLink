@@ -34,7 +34,7 @@ const PostCard = ({ post, currentUserId }) => {
 
   return (
     <article className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 space-y-4">
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center gap-3">
         <Link to={`/profile/${post.Author?.id}`}>
           <Avatar user={post.Author} size="md" />
         </Link>
@@ -50,19 +50,21 @@ const PostCard = ({ post, currentUserId }) => {
 
       <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
 
-      <div className="flex items-center space-x-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+      <div className="flex items-center gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
         <button
+          type="button"
           onClick={() => likeMutation.mutate()}
-          className={`flex items-center space-x-1.5 text-sm transition-colors ${liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+          className={`flex items-center gap-1.5 text-sm transition-colors ${liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
         >
-          <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
+          <Heart className={`size-4 ${liked ? 'fill-current' : ''}`} />
           <span>{post.PostLikes?.length || 0}</span>
         </button>
         <button
+          type="button"
           onClick={() => setShowComments(!showComments)}
-          className="flex items-center space-x-1.5 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
         >
-          <MessageCircle className="w-4 h-4" />
+          <MessageCircle className="size-4" />
           <span>{post.PostComments?.length || 0}</span>
         </button>
       </div>
@@ -78,16 +80,17 @@ const PostCard = ({ post, currentUserId }) => {
               </div>
             </div>
           ))}
-          <form onSubmit={e => { e.preventDefault(); if (commentText.trim()) commentMutation.mutate(); }} className="flex items-center space-x-2">
+          <form onSubmit={e => { e.preventDefault(); if (commentText.trim()) commentMutation.mutate(); }} className="flex items-center gap-2">
             <Avatar user={{ full_name: '' }} size="xs" />
             <input
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
-              placeholder="Write a comment..."
+              placeholder="Write a comment…"
+              aria-label="Comment"
               className="flex-1 text-xs bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1.5 border-none focus:ring-1 focus:ring-indigo-500 dark:text-white"
             />
             <button type="submit" disabled={!commentText.trim()} className="text-indigo-600 disabled:opacity-40">
-              <Send className="w-4 h-4" />
+              <Send className="size-4" />
             </button>
           </form>
         </div>
@@ -123,18 +126,20 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-5">
           {/* Create post */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start gap-3">
               <Avatar user={user} size="md" />
               <div className="flex-1">
                 <textarea
                   value={postContent}
                   onChange={e => setPostContent(e.target.value)}
                   placeholder="What's on your mind?"
+                  aria-label="Post content"
                   rows={3}
                   className="w-full text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:text-white placeholder-gray-400"
                 />
                 <div className="flex justify-end mt-2">
                   <button
+                    type="button"
                     onClick={() => { if (postContent.trim()) createPostMutation.mutate(); }}
                     disabled={!postContent.trim() || createPostMutation.isPending}
                     className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"

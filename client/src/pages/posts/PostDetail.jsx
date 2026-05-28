@@ -40,12 +40,12 @@ const PostDetail = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
-      <button onClick={() => navigate(-1)} className="flex items-center text-sm text-gray-500 hover:text-indigo-600">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+      <button type="button" onClick={() => navigate(-1)} className="flex items-center text-sm text-gray-500 hover:text-indigo-600">
+        <ArrowLeft className="size-4 mr-1" /> Back
       </button>
 
       <article className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3">
           <Link to={`/profile/${post.Author?.id}`}><Avatar user={post.Author} size="md" /></Link>
           <div>
             <Link to={`/profile/${post.Author?.id}`} className="font-semibold text-gray-900 dark:text-white hover:text-indigo-600 text-sm">{post.Author?.full_name}</Link>
@@ -55,9 +55,9 @@ const PostDetail = () => {
 
         <p className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line">{post.content}</p>
 
-        <div className="flex items-center space-x-4 pt-3 border-t border-gray-100 dark:border-gray-700">
-          <button onClick={() => likeMutation.mutate()} className={`flex items-center space-x-1.5 text-sm transition-colors ${liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
-            <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
+        <div className="flex items-center gap-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+          <button type="button" onClick={() => likeMutation.mutate()} className={`flex items-center gap-1.5 text-sm transition-colors ${liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
+            <Heart className={`size-4 ${liked ? 'fill-current' : ''}`} />
             <span>{post.PostLikes?.length || 0} likes</span>
           </button>
         </div>
@@ -67,7 +67,7 @@ const PostDetail = () => {
           <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Comments ({post.PostComments?.length || 0})</h3>
 
           {post.PostComments?.map(c => (
-            <div key={c.id} className="flex items-start space-x-3">
+            <div key={c.id} className="flex items-start gap-3">
               <Avatar user={c.User} size="sm" className="mt-0.5" />
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl px-4 py-2 flex-1">
                 <p className="text-xs font-medium text-gray-900 dark:text-white">{c.User?.full_name}</p>
@@ -76,10 +76,10 @@ const PostDetail = () => {
             </div>
           ))}
 
-          <form onSubmit={e => { e.preventDefault(); if (commentText.trim()) commentMutation.mutate(); }} className="flex items-center space-x-3">
+          <form onSubmit={e => { e.preventDefault(); if (commentText.trim()) commentMutation.mutate(); }} className="flex items-center gap-3">
             <Avatar user={user} size="sm" />
             <div className="flex-1 flex items-center bg-gray-50 dark:bg-gray-700 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600">
-              <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Write a comment..." className="flex-1 bg-transparent px-4 py-2 text-sm dark:text-white outline-none" />
+              <input value={commentText} onChange={e => setCommentText(e.target.value)} placeholder="Write a comment…" aria-label="Comment" className="flex-1 bg-transparent px-4 py-2 text-sm dark:text-white outline-none" />
               <button type="submit" disabled={!commentText.trim()} className="px-3 py-2 text-indigo-600 disabled:opacity-40">
                 <Send className="w-4 h-4" />
               </button>

@@ -2,7 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createEvent } from '../../api/event';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../../components/ui/Input';
@@ -22,12 +22,14 @@ const schema = z.object({
 
 const CreateEvent = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema), defaultValues: { location_type: 'auditorium', is_public: true } });
 
   const mutation = useMutation({
     mutationFn: createEvent,
     onSuccess: (ev) => {
       toast.success('Event created!');
+      queryClient.invalidateQueries({ queryKey: ['events'] });
       navigate(`/events/${ev.id}`);
     },
     onError: () => toast.error('Failed to create event')
@@ -42,14 +44,14 @@ const CreateEvent = () => {
           <Input id="title" label="Event Title" {...register('title')} error={errors.title} />
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-            <textarea rows={4} {...register('description')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none" placeholder="Event details..." />
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <textarea id="description" rows={4} {...register('description')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none" placeholder="Event details…" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location Type</label>
-              <select {...register('location_type')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 text-sm">
+              <label htmlFor="location_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Location Type</label>
+              <select id="location_type" {...register('location_type')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 text-sm">
                 {['hall', 'department', 'auditorium', 'field', 'online', 'other'].map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
               </select>
             </div>
@@ -58,13 +60,13 @@ const CreateEvent = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
-              <input type="datetime-local" {...register('start_time')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 text-sm" />
+              <label htmlFor="start_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
+              <input id="start_time" type="datetime-local" {...register('start_time')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 text-sm" />
               {errors.start_time && <p className="mt-1 text-sm text-red-600">{errors.start_time.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
-              <input type="datetime-local" {...register('end_time')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 text-sm" />
+              <label htmlFor="end_time" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
+              <input id="end_time" type="datetime-local" {...register('end_time')} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 text-sm" />
               {errors.end_time && <p className="mt-1 text-sm text-red-600">{errors.end_time.message}</p>}
             </div>
           </div>

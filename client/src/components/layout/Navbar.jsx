@@ -39,26 +39,27 @@ const Navbar = ({ toggleSidebar }) => {
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       <button
+        type="button"
         onClick={toggleSidebar}
         className="-m-2.5 p-2.5 text-gray-700 dark:text-gray-300 lg:hidden"
       >
         <span className="sr-only">Open sidebar</span>
-        <Menu className="h-6 w-6" aria-hidden="true" />
+        <Menu className="size-6" aria-hidden="true" />
       </button>
 
       <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 lg:hidden" aria-hidden="true" />
 
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
         <Link to="/search" className="relative flex flex-1 items-center">
-          <Search className="pointer-events-none absolute left-0 h-5 w-5 text-gray-400" aria-hidden="true" />
+          <Search className="pointer-events-none absolute left-0 size-5 text-gray-400" aria-hidden="true" />
           <span className="block h-full w-full border-0 py-0 pl-8 pr-0 text-gray-400 bg-transparent text-sm">
-            Search users, posts, events...
+            Search users, posts, events…
           </span>
         </Link>
 
         <div className="flex items-center gap-x-4 lg:gap-x-6">
-          <button onClick={() => setIsDark(!isDark)} className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
-            {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          <button type="button" onClick={() => setIsDark(!isDark)} className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+            {isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
           </button>
 
           <Link
@@ -66,16 +67,16 @@ const Navbar = ({ toggleSidebar }) => {
             onClick={clearUnread}
             className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative"
           >
-            <Bell className="h-6 w-6" />
+            <Bell className="size-6" />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
+              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-red-500" />
             )}
           </Link>
 
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200 dark:lg:bg-gray-700" aria-hidden="true" />
 
           <div className="relative">
-            <button className="-m-1.5 flex items-center p-1.5" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+            <button type="button" className="-m-1.5 flex items-center p-1.5" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
               <span className="sr-only">Open user menu</span>
               <Avatar user={user} size="sm" />
               <span className="hidden lg:flex lg:items-center">
@@ -102,10 +103,11 @@ const Navbar = ({ toggleSidebar }) => {
                   Settings
                 </Link>
                 <button
+                  type="button"
                   onClick={handleLogout}
                   className="flex w-full items-center px-3 py-1.5 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
-                  <LogOut className="w-4 h-4 mr-2" /> Sign out
+                  <LogOut className="size-4 mr-2" /> Sign out
                 </button>
               </div>
             )}
