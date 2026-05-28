@@ -98,8 +98,8 @@ const initSocket = (io) => {
           read_at: null,
         };
 
-        // Broadcast to everyone in the chat room (sender included if they joined)
-        io.to(`chat:${commonChatId}`).emit('receiveMessage', payload);
+        // Broadcast to everyone in the chat room except the sender
+        socket.to(`chat:${commonChatId}`).emit('receiveMessage', payload);
 
         // Direct-emit to receiver only if they haven't joined the room
         const receiverSocketId = connectedUsers.get(parseInt(receiverId));

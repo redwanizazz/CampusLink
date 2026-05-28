@@ -153,6 +153,8 @@ const Messages = () => {
       content: newMessage,
     }, (response) => {
       if (response.success) {
+        setMessages(prev => [...prev, response.message]);
+        scrollToBottom();
         setNewMessage('');
         if (activeChat.id.toString().startsWith('temp_')) {
           setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
@@ -189,9 +191,13 @@ const Messages = () => {
       }, (response) => {
         if (!response?.success) {
           toast.error('Failed to send file');
-        } else if (activeChat.id.toString().startsWith('temp_')) {
-          setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
-          fetchChats();
+        } else {
+          setMessages(prev => [...prev, response.message]);
+          scrollToBottom();
+          if (activeChat.id.toString().startsWith('temp_')) {
+            setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
+            fetchChats();
+          }
         }
       });
     } catch {
