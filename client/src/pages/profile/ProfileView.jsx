@@ -82,7 +82,7 @@ const ProfileView = () => {
             <p className="text-gray-500 dark:text-gray-400 capitalize">{user.role} • {user.Department?.name}</p>
             {user.batch && <p className="text-sm text-gray-400">Batch {user.batch}</p>}
           </div>
-          <div className="mt-4 sm:mt-0 flex space-x-2">
+          <div className="mt-4 sm:mt-0 flex gap-2">
             {!isOwnProfile && connectionStatus === 'accepted' && (
               <Button variant="secondary" onClick={() => navigate(`/messages?user=${id}`)} className="flex items-center w-auto px-4">
                 <MessageSquare className="w-4 h-4 mr-2" /> Message
@@ -100,16 +100,16 @@ const ProfileView = () => {
             <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">{user.bio || 'No bio provided yet.'}</p>
             <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
               <div className="flex items-center">
-                <Book className="w-4 h-4 mr-3 text-indigo-500 flex-shrink-0" />
+                <Book className="size-4 mr-3 text-indigo-500 flex-shrink-0" />
                 <span>Batch {user.batch || 'N/A'}</span>
               </div>
               <div className="flex items-center">
-                <Mail className="w-4 h-4 mr-3 text-indigo-500 flex-shrink-0" />
+                <Mail className="size-4 mr-3 text-indigo-500 flex-shrink-0" />
                 <span className="break-all">{user.email}</span>
               </div>
               {user.phone && (
                 <div className="flex items-center">
-                  <Phone className="w-4 h-4 mr-3 text-indigo-500 flex-shrink-0" />
+                  <Phone className="size-4 mr-3 text-indigo-500 flex-shrink-0" />
                   <span>{user.phone}</span>
                 </div>
               )}

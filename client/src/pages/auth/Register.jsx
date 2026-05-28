@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, Link } from 'react-router-dom';
@@ -31,7 +31,7 @@ const Register = () => {
   const { setAuth, token } = useAuthStore();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({});
+  const formData = useRef({});
   const [registeredUser, setRegisteredUser] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -45,12 +45,12 @@ const Register = () => {
   const { register: reg2, handleSubmit: hs2, formState: { errors: e2 } } = useForm({ resolver: zodResolver(step2Schema) });
 
   const onStep1Submit = (data) => {
-    setFormData({ ...formData, ...data });
+    formData.current = { ...formData.current, ...data };
     setStep(2);
   };
 
   const onStep2Submit = async (data) => {
-    const finalData = { ...formData, ...data, department_id: parseInt(data.department_id) };
+    const finalData = { ...formData.current, ...data, department_id: parseInt(data.department_id) };
     try {
       setIsLoading(true);
       const response = await registerApi(finalData);
@@ -116,8 +116,8 @@ const Register = () => {
               return (
                 <React.Fragment key={num}>
                   <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${done ? 'bg-indigo-600 text-white' : active ? 'bg-indigo-100 text-indigo-600 border-2 border-indigo-600' : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'}`}>
-                      {done ? <CheckCircle className="w-5 h-5" /> : num}
+                    <div className={`size-8 rounded-full flex items-center justify-center text-sm font-medium ${done ? 'bg-indigo-600 text-white' : active ? 'bg-indigo-100 text-indigo-600 border-2 border-indigo-600' : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'}`}>
+                      {done ? <CheckCircle className="size-5" /> : num}
                     </div>
                     <span className={`mt-1 text-xs ${active ? 'text-indigo-600 font-medium' : 'text-gray-400'}`}>{label}</span>
                   </div>
@@ -146,8 +146,8 @@ const Register = () => {
             <form className="space-y-6" onSubmit={hs2(onStep2Submit)}>
               <Input id="student_id" label="Student ID" {...reg2('student_id')} error={e2.student_id} />
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
-                <select
+                <label htmlFor="department_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Department</label>
+                <select id="department_id"
                   {...reg2('department_id')}
                   className={`block w-full px-3 py-2 border ${e2.department_id ? 'border-red-300' : 'border-gray-300 dark:border-gray-600'} rounded-md shadow-sm bg-white dark:bg-gray-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500`}
                 >
@@ -157,7 +157,7 @@ const Register = () => {
                 {e2.department_id && <p className="mt-1 text-sm text-red-600">{e2.department_id.message}</p>}
               </div>
               <Input id="batch" label="Batch Year (e.g. 2023)" {...reg2('batch')} error={e2.batch} />
-              <div className="flex space-x-3">
+              <div className="flex gap-3">
                 <Button type="button" variant="secondary" onClick={() => setStep(1)} className="w-1/3">
                   <ArrowLeft className="mr-1 w-4 h-4" /> Back
                 </Button>
@@ -173,13 +173,13 @@ const Register = () => {
           {step === 3 && (
             <div className="space-y-6">
               <p className="text-sm text-gray-600 dark:text-gray-400 text-center">Upload a profile photo (optional)</p>
-              <div className="flex flex-col items-center space-y-4">
+              <div className="flex flex-col items-center gap-4">
                 <label className="relative cursor-pointer group">
                   {avatarPreview ? (
-                    <img src={avatarPreview} alt="Preview" className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 group-hover:opacity-80 transition-opacity" />
+                    <img src={avatarPreview} alt="Preview" className="size-32 rounded-full object-cover border-4 border-indigo-200 group-hover:opacity-80 transition-opacity" />
                   ) : (
-                    <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center border-4 border-dashed border-gray-300 dark:border-gray-600 group-hover:border-indigo-400 transition-colors">
-                      <Camera className="w-10 h-10 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                    <div className="size-32 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center border-4 border-dashed border-gray-300 dark:border-gray-600 group-hover:border-indigo-400 transition-colors">
+                      <Camera className="size-10 text-gray-400 group-hover:text-indigo-500 transition-colors" />
                     </div>
                   )}
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />

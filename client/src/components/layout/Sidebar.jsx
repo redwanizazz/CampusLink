@@ -25,13 +25,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   return (
     <>
       {isOpen && (
-        <div className="fixed inset-0 bg-gray-900/50 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
+        <div role="presentation" className="fixed inset-0 bg-gray-900/50 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
           <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">CampusLink</span>
-          <button onClick={() => setIsOpen(false)} className="lg:hidden p-2 text-gray-500">
+          <button type="button" onClick={() => setIsOpen(false)} className="lg:hidden p-2 text-gray-500">
             <X size={20} />
           </button>
         </div>
@@ -47,7 +47,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${isActive ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'}`
                 }
               >
-                <item.icon className="mr-3 flex-shrink-0 h-5 w-5" />
+                <item.icon className="mr-3 flex-shrink-0 size-5" />
                 {item.name}
               </NavLink>
             ))}

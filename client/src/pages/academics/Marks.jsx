@@ -21,12 +21,12 @@ const Marks = () => {
 
       {data.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
-          <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+          <BookOpen className="size-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
           <p>No marks recorded yet.</p>
         </div>
       ) : (
         data.map(item => {
-          const sorted = [...item.marks].sort((a, b) => examOrder.indexOf(a.exam_type) - examOrder.indexOf(b.exam_type));
+          const sorted = item.marks.toSorted((a, b) => examOrder.indexOf(a.exam_type) - examOrder.indexOf(b.exam_type));
           return (
             <div key={item.enrollment_id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{item.course.title}</h3>

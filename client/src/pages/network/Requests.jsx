@@ -78,8 +78,9 @@ const Requests = () => {
         </div>
       </div>
 
-      <div className="flex space-x-4 mb-6">
+      <div className="flex gap-4 mb-6">
         <button
+          type="button"
           onClick={() => setActiveTab('incoming')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'incoming' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
@@ -88,6 +89,7 @@ const Requests = () => {
           Received ({requests.incoming.length})
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('outgoing')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeTab === 'outgoing' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'

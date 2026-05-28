@@ -49,7 +49,7 @@ const UserManagement = () => {
       <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, email, or student ID..." className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-white text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, email, or student ID…" aria-label="Search users" className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-white text-sm focus:ring-indigo-500 focus:border-indigo-500" />
         </div>
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-white text-sm">
           <option value="">All roles</option>
@@ -76,7 +76,7 @@ const UserManagement = () => {
               users.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
                   <td className="px-4 py-3">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center gap-3">
                       <Avatar user={u} size="sm" />
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{u.full_name}</p>
@@ -97,13 +97,13 @@ const UserManagement = () => {
                     {u.is_verified ? (
                       <span className="flex items-center text-green-600 text-xs"><CheckCircle className="w-3.5 h-3.5 mr-1" /> Verified</span>
                     ) : (
-                      <button onClick={() => verifyMutation.mutate(u.id)} className="text-xs text-indigo-600 hover:underline flex items-center">
+                      <button type="button" onClick={() => verifyMutation.mutate(u.id)} className="text-xs text-indigo-600 hover:underline flex items-center">
                         <Shield className="w-3.5 h-3.5 mr-1" /> Verify
                       </button>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => { if (confirm(`Delete ${u.full_name}?`)) deleteMutation.mutate(u.id); }} className="text-red-500 hover:text-red-700 p-1">
+                    <button type="button" onClick={() => { if (confirm(`Delete ${u.full_name}?`)) deleteMutation.mutate(u.id); }} className="text-red-500 hover:text-red-700 p-1">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>

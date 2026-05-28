@@ -47,8 +47,8 @@ const EventDetail = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <button onClick={() => navigate(-1)} className="flex items-center text-sm text-gray-500 hover:text-indigo-600 transition-colors">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+      <button type="button" onClick={() => navigate(-1)} className="flex items-center text-sm text-gray-500 hover:text-indigo-600 transition-colors">
+        <ArrowLeft className="size-4 mr-1" /> Back
       </button>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -60,19 +60,19 @@ const EventDetail = () => {
           </div>
 
           <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-indigo-500" />
+            <div className="flex items-center gap-2">
+              <Calendar className="size-4 text-indigo-500" />
               <span>{format(new Date(event.start_time), 'PPp')} – {format(new Date(event.end_time), 'p')}</span>
             </div>
             {event.venue && (
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-4 h-4 text-indigo-500" />
+              <div className="flex items-center gap-2">
+                <MapPin className="size-4 text-indigo-500" />
                 <span>{event.venue}</span>
               </div>
             )}
             {event.contact_info && (
-              <div className="flex items-center space-x-2">
-                <Phone className="w-4 h-4 text-indigo-500" />
+              <div className="flex items-center gap-2">
+                <Phone className="size-4 text-indigo-500" />
                 <span>{event.contact_info}</span>
               </div>
             )}
@@ -82,15 +82,15 @@ const EventDetail = () => {
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">{event.description}</p>
           )}
 
-          <div className="flex items-center space-x-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
             <Avatar user={event.Organizer} size="sm" />
             <span>Organised by <strong className="text-gray-800 dark:text-gray-200">{event.Organizer?.full_name}</strong></span>
           </div>
 
           {/* RSVP stats */}
-          <div className="flex items-center space-x-4 py-3 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex items-center space-x-1.5 text-sm text-gray-600 dark:text-gray-400">
-              <Users className="w-4 h-4" />
+          <div className="flex items-center gap-4 py-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+              <Users className="size-4" />
               <span>{going} going · {interested} interested</span>
             </div>
           </div>
@@ -99,6 +99,7 @@ const EventDetail = () => {
           <div className="flex flex-wrap gap-3">
             {RSVP_OPTIONS.map(({ status, label, cls }) => (
               <button
+                type="button"
                 key={status}
                 onClick={() => rsvpMutation.mutate(status)}
                 disabled={rsvpMutation.isPending}

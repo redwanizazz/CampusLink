@@ -24,7 +24,7 @@ const Noticeboard = () => {
   const { data: notices = [], isLoading } = useQuery({ queryKey: ['notices'], queryFn: getNotices });
   const canPost = user?.role === 'faculty' || user?.role === 'admin';
 
-  const sorted = [...notices].sort((a, b) => {
+  const sorted = notices.toSorted((a, b) => {
     const order = { urgent: 0, important: 1, normal: 2 };
     return order[a.priority] - order[b.priority] || new Date(b.created_at) - new Date(a.created_at);
   });
@@ -33,11 +33,11 @@ const Noticeboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-          <Bell className="w-6 h-6 mr-2 text-indigo-500" /> Noticeboard
+          <Bell className="size-6 mr-2 text-indigo-500" /> Noticeboard
         </h1>
         {canPost && (
-          <Link to="/noticeboard/create" className="flex items-center space-x-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-            <Plus className="w-4 h-4" /> <span>Post Notice</span>
+          <Link to="/noticeboard/create" className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+            <Plus className="size-4" /> <span>Post Notice</span>
           </Link>
         )}
       </div>
@@ -48,7 +48,7 @@ const Noticeboard = () => {
         </div>
       ) : sorted.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
-          <Bell className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+          <Bell className="size-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
           <p>No notices yet.</p>
         </div>
       ) : (
@@ -56,12 +56,12 @@ const Noticeboard = () => {
           {sorted.map(n => (
             <Link key={n.id} to={`/noticeboard/${n.id}`} className="block bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start space-x-3 flex-1 min-w-0">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className="mt-0.5">{priorityIcon[n.priority]}</div>
                   <div className="min-w-0">
                     <h3 className="font-semibold text-gray-900 dark:text-white truncate">{n.title}</h3>
                     <p className="text-sm text-gray-500 mt-1 line-clamp-2">{n.content}</p>
-                    <div className="flex items-center space-x-3 mt-2 text-xs text-gray-400">
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                       <span>{n.Poster?.full_name}</span>
                       {n.Department && <span className="text-indigo-500">{n.Department.name}</span>}
                       <span>{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</span>

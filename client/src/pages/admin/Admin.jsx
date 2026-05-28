@@ -7,8 +7,8 @@ import { Users, FileText, Calendar, MessageSquare, UserCheck, Settings } from 'l
 
 const StatCard = ({ icon: Icon, label, value, color }) => (
   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${color}`}>
-      <Icon className="w-5 h-5 text-white" />
+    <div className={`size-10 rounded-xl flex items-center justify-center mb-3 ${color}`}>
+      <Icon className="size-5 text-white" />
     </div>
     <p className="text-2xl font-bold text-gray-900 dark:text-white">{value ?? '–'}</p>
     <p className="text-sm text-gray-500 mt-0.5">{label}</p>
@@ -41,9 +41,9 @@ const Admin = () => {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link to="/admin/users" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow flex items-center space-x-4">
-          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center">
-            <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+        <Link to="/admin/users" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow flex items-center gap-4">
+          <div className="size-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center">
+            <Users className="size-6 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-white">User Management</h3>

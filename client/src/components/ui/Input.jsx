@@ -1,6 +1,4 @@
-import React from 'react';
-
-export const Input = React.forwardRef(({ label, id, error, ...props }, ref) => {
+export const Input = ({ label, id, error, ref, ...props }) => {
   return (
     <div className="mb-4">
       {label && (
@@ -19,6 +17,4 @@ export const Input = React.forwardRef(({ label, id, error, ...props }, ref) => {
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error.message}</p>}
     </div>
   );
-});
-
-Input.displayName = 'Input';
+};

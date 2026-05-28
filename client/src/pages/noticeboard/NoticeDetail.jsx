@@ -30,12 +30,12 @@ const NoticeDetail = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <button onClick={() => navigate(-1)} className="flex items-center text-sm text-gray-500 hover:text-indigo-600">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+      <button type="button" onClick={() => navigate(-1)} className="flex items-center text-sm text-gray-500 hover:text-indigo-600">
+        <ArrowLeft className="size-4 mr-1" /> Back
       </button>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 space-y-5">
-        <div className="flex items-start space-x-3">
+        <div className="flex items-start gap-3">
           {priorityIcon[notice.priority]}
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{notice.title}</h1>
         </div>
@@ -51,8 +51,8 @@ const NoticeDetail = () => {
         </div>
 
         {notice.attachment_url && (
-          <a href={`${API_BASE}${notice.attachment_url}`} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 text-indigo-600 hover:underline text-sm">
-            <Paperclip className="w-4 h-4" />
+          <a href={`${API_BASE}${notice.attachment_url}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-indigo-600 hover:underline text-sm">
+            <Paperclip className="size-4" />
             <span>View Attachment</span>
           </a>
         )}

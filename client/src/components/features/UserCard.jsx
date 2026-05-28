@@ -10,17 +10,17 @@ const UserCard = ({ user, actionType, onAction, onSecondaryAction, isProcessing 
       case 'connect':
         return (
           <Button onClick={() => onAction(user.id)} disabled={isProcessing} className="w-full">
-            <UserPlus className="w-4 h-4 mr-2" /> Connect
+            <UserPlus className="size-4 mr-2" /> Connect
           </Button>
         );
       case 'accept':
         return (
-          <div className="flex space-x-2">
+          <div className="flex gap-2">
             <Button onClick={() => onAction()} disabled={isProcessing} className="flex-1 bg-green-600 hover:bg-green-700">
-              <UserCheck className="w-4 h-4 mr-2" /> Accept
+              <UserCheck className="size-4 mr-2" /> Accept
             </Button>
             <Button onClick={() => onSecondaryAction()} disabled={isProcessing} variant="secondary" className="px-3">
-              <X className="w-4 h-4 text-red-600" />
+              <X className="size-4 text-red-600" />
             </Button>
           </div>
         );
@@ -33,7 +33,7 @@ const UserCard = ({ user, actionType, onAction, onSecondaryAction, isProcessing 
       case 'message':
         return (
           <Button onClick={() => onAction(user.id)} disabled={isProcessing} className="w-full">
-            <MessageSquare className="w-4 h-4 mr-2" /> Message
+            <MessageSquare className="size-4 mr-2" /> Message
           </Button>
         );
       default:
