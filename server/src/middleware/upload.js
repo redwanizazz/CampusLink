@@ -1,5 +1,6 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const ALLOWED_MIME = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -11,9 +12,12 @@ const ALLOWED_MIME = new Set([
   'text/plain'
 ]);
 
+const UPLOAD_DIR = path.join(__dirname, '../../uploads');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads'));
+    cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
