@@ -7,7 +7,9 @@ router.use(authMiddleware);
 
 router.get('/', chatController.getChats);
 router.post('/', chatController.createOrGetDirectChat);
+router.post('/group', chatController.createGroupChat);
 router.get('/user/:targetUserId', chatController.getChatByUserId);
+router.get('/:chatId/details', chatController.getChatDetails);
 router.get('/:chatId/messages', chatController.getMessages);
 
 module.exports = router;
