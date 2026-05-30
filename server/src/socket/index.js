@@ -10,6 +10,10 @@ const emitNotification = (userId, payload) => {
   if (_io) _io.to(`user:${userId}`).emit('notification', payload);
 };
 
+const broadcastEventUpdate = (payload) => {
+  if (_io) _io.emit('event_update', payload);
+};
+
 const initSocket = (io) => {
   _io = io;
   io.use((socket, next) => {
@@ -124,4 +128,4 @@ const initSocket = (io) => {
   });
 };
 
-module.exports = { initSocket, emitNotification, connectedUsers };
+module.exports = { initSocket, emitNotification, broadcastEventUpdate, connectedUsers };

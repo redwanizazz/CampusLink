@@ -1,6 +1,6 @@
 const { Event, EventRSVP, User, Department, Notification } = require('../models');
 const { Op } = require('sequelize');
-const { emitNotification } = require('../socket/index');
+const { emitNotification, broadcastEventUpdate } = require('../socket/index');
 
 const getEvents = async (req, res) => {
   try {
@@ -55,6 +55,20 @@ const createEvent = async (req, res) => {
       contact_info
     });
     res.status(201).json(event);
+
+    try {
+      const organizer = await User.findByPk(req.user.id, { attributes: ['full_name'] });
+      broadcastEventUpdate({
+        id: event.id,
+        title: event.title,
+        start_time: event.start_time,
+        venue: event.venue,
+        organizer_id: req.user.id,
+        organizer_name: organizer?.full_name,
+      });
+    } catch (e) {
+      console.error('event_update broadcast error:', e.message);
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
