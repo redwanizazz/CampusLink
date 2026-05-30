@@ -16,3 +16,13 @@ export const getChatByUserId = async (userId) => {
   const response = await axiosInstance.get(`/chats/user/${userId}`);
   return response.data;
 };
+
+export const createGroupChat = async ({ name, memberIds }) => {
+  const response = await axiosInstance.post('/chats/group', { name, memberIds });
+  return response.data;
+};
+
+export const getChatDetails = async (chatId) => {
+  const response = await axiosInstance.get(`/chats/${chatId}/details`);
+  return response.data;
+};
