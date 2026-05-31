@@ -23,10 +23,10 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Strict auth rate limit — 10 req / 15 min
+// Auth rate limit — 100 req / 15 min (loose for dev; tighten before production)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many auth attempts. Try again later.' }
