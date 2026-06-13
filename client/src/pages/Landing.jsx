@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Users, MessageSquare, GraduationCap, Calendar, Bell } from 'lucide-react';
+import { BookOpen, Users, MessageSquare, GraduationCap, Calendar, Bell, Sun, Moon } from 'lucide-react';
 
 const features = [
   { icon: Users, title: 'Student Networking', desc: 'Discover and connect with classmates across departments and batches.' },
@@ -11,12 +11,29 @@ const features = [
   { icon: BookOpen, title: 'Campus Feed', desc: 'Share posts, like and comment with your connections and department.' },
 ];
 
-const Landing = () => (
+const Landing = () => {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+  };
+
+  return (
   <div className="min-h-screen bg-white dark:bg-gray-900">
     {/* Nav */}
     <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
       <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">CampusLink</span>
       <div className="flex items-center space-x-4">
+        <button
+          onClick={toggleDark}
+          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          aria-label="Toggle dark mode"
+        >
+          {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
         <Link to="/login" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600">Sign in</Link>
         <Link to="/register" className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors">Get started</Link>
       </div>
@@ -61,6 +78,7 @@ const Landing = () => (
       CampusLink — built for students, by students.
     </footer>
   </div>
-);
+  );
+};
 
 export default Landing;

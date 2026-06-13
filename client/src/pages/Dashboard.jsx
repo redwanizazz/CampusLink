@@ -1,22 +1,45 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFeed, createPost, toggleLike, addComment } from '../api/post';
+import { getFeed, createPost, toggleLike, addComment, reportPost } from '../api/post';
 import { getEvents } from '../api/event';
 import { getNotices } from '../api/notice';
 import { useAuthStore } from '../store/useAuthStore';
 import Avatar from '../components/ui/Avatar';
 import { PostSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Send, Calendar, Bell, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle, Send, Calendar, Bell, BookOpen, Flag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
+
+const REPORT_REASONS = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'misinformation', label: 'Misinformation' },
+  { value: 'other', label: 'Other' },
+];
 
 const PostCard = ({ post, currentUserId }) => {
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
+  const [showReportMenu, setShowReportMenu] = useState(false);
 
   const liked = post.PostLikes?.some(l => l.user_id === currentUserId);
+  const isOwnPost = post.Author?.id === currentUserId;
+
+  const reportMutation = useMutation({
+    mutationFn: (reason) => reportPost(post.id, reason),
+    onSuccess: () => {
+      toast.success('Post reported. Thank you for keeping CampusLink safe.');
+      setShowReportMenu(false);
+    },
+    onError: (err) => {
+      const msg = err?.response?.data?.error ?? 'Failed to report post';
+      toast.error(msg);
+      setShowReportMenu(false);
+    },
+  });
 
   const likeMutation = useMutation({
     mutationFn: () => toggleLike(post.id),
@@ -67,6 +90,42 @@ const PostCard = ({ post, currentUserId }) => {
           <MessageCircle className="size-4" />
           <span>{post.PostComments?.length || 0}</span>
         </button>
+
+        {!isOwnPost && (
+          <div className="relative ml-auto">
+            <button
+              type="button"
+              title="Report post"
+              onClick={() => setShowReportMenu(v => !v)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <Flag className="size-3.5" />
+            </button>
+            {showReportMenu && (
+              <div className="absolute right-0 bottom-7 z-20 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+                <p className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Report reason</p>
+                {REPORT_REASONS.map(r => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => reportMutation.mutate(r.value)}
+                    disabled={reportMutation.isPending}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    {r.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowReportMenu(false)}
+                  className="w-full text-left px-3 py-2 text-xs text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700 mt-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {showComments && (
@@ -176,7 +235,11 @@ const Dashboard = () => {
               <Link to="/events" className="text-xs text-indigo-600 hover:underline">See all</Link>
             </div>
             {events.slice(0, 3).length === 0 ? (
-              <p className="text-sm text-gray-400">No upcoming events.</p>
+              <div className="text-center py-4">
+                <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-200 dark:text-gray-600" />
+                <p className="text-sm text-gray-400">No upcoming events.</p>
+                <Link to="/events" className="text-xs text-indigo-500 hover:underline mt-1 inline-block">Browse events</Link>
+              </div>
             ) : (
               <div className="space-y-3">
                 {events.slice(0, 3).map(ev => (
@@ -198,7 +261,10 @@ const Dashboard = () => {
               <Link to="/noticeboard" className="text-xs text-indigo-600 hover:underline">See all</Link>
             </div>
             {notices.slice(0, 3).length === 0 ? (
-              <p className="text-sm text-gray-400">No notices yet.</p>
+              <div className="text-center py-4">
+                <Bell className="w-8 h-8 mx-auto mb-2 text-gray-200 dark:text-gray-600" />
+                <p className="text-sm text-gray-400">No notices yet.</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {notices.slice(0, 3).map(n => (

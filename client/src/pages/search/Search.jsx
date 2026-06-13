@@ -11,7 +11,7 @@ const Search = () => {
   const q = searchParams.get('q') || '';
   const [inputVal, setInputVal] = useState(q);
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: ['search', q],
     queryFn: () => globalSearch(q),
     enabled: q.length >= 2,
@@ -42,6 +42,12 @@ const Search = () => {
         <div className="text-center py-12 text-gray-400">
           <SearchIcon className="w-12 h-12 mx-auto mb-3 text-gray-200 dark:text-gray-700" />
           <p>Enter at least 2 characters to search</p>
+        </div>
+      )}
+
+      {isError && q.length >= 2 && (
+        <div className="text-center py-12 text-red-500">
+          <p>Search failed. Please try again.</p>
         </div>
       )}
 

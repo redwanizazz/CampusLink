@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { getChats, getMessages, getChatByUserId } from '../../api/chat';
 import { getProfile } from '../../api/user';
 import { uploadFile } from '../../api/upload';
@@ -290,7 +290,16 @@ const Messages = () => {
               ))}
             </div>
           ) : chats.length === 0 ? (
-            <p className="p-6 text-center text-sm text-gray-500">No conversations yet. Connect with people in the Network tab.</p>
+            <div className="p-6 text-center space-y-3">
+              <Users className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600" />
+              <p className="text-sm text-gray-500">No conversations yet.</p>
+              <Link
+                to="/network"
+                className="inline-block text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
+              >
+                Find people to message
+              </Link>
+            </div>
           ) : (
             chats.map(chat => {
               const group = isGroup(chat);

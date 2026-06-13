@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getStats } from '../../api/admin';
 import { Link } from 'react-router-dom';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { Users, FileText, Calendar, MessageSquare, UserCheck, Settings } from 'lucide-react';
+import { Users, FileText, Calendar, MessageSquare, UserCheck, Settings, BarChart2, ShieldAlert } from 'lucide-react';
 
 const StatCard = ({ icon: Icon, label, value, color }) => (
   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
@@ -40,7 +40,7 @@ const Admin = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Link to="/admin/users" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow flex items-center gap-4">
           <div className="size-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center">
             <Users className="size-6 text-indigo-600 dark:text-indigo-400" />
@@ -48,6 +48,24 @@ const Admin = () => {
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-white">User Management</h3>
             <p className="text-sm text-gray-500">Search, verify, and manage user roles</p>
+          </div>
+        </Link>
+        <Link to="/admin/analytics" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow flex items-center gap-4">
+          <div className="size-12 bg-blue-100 dark:bg-blue-900/40 rounded-xl flex items-center justify-center">
+            <BarChart2 className="size-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Analytics</h3>
+            <p className="text-sm text-gray-500">Registrations, posts, events, departments</p>
+          </div>
+        </Link>
+        <Link to="/admin/content" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow flex items-center gap-4">
+          <div className="size-12 bg-red-100 dark:bg-red-900/40 rounded-xl flex items-center justify-center">
+            <ShieldAlert className="size-6 text-red-600 dark:text-red-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Content Moderation</h3>
+            <p className="text-sm text-gray-500">Review reported posts and take action</p>
           </div>
         </Link>
       </div>

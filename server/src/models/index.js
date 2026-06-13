@@ -20,6 +20,7 @@ const Post = require('./Post');
 const PostLike = require('./PostLike');
 const PostComment = require('./PostComment');
 const Notice = require('./Notice');
+const Report = require('./Report');
 
 // Define Associations
 
@@ -100,6 +101,12 @@ PostComment.belongsTo(User, { foreignKey: 'user_id' });
 Notice.belongsTo(User, { as: 'Poster', foreignKey: 'posted_by' });
 Notice.belongsTo(Department, { foreignKey: 'department_id' });
 
+// --- Reports ---
+Report.belongsTo(User, { as: 'Reporter', foreignKey: 'reporter_id' });
+Report.belongsTo(User, { as: 'Resolver', foreignKey: 'resolved_by' });
+Report.belongsTo(Post, { foreignKey: 'post_id' });
+Post.hasMany(Report, { foreignKey: 'post_id', onDelete: 'CASCADE' });
+
 const db = {
   sequelize,
   User,
@@ -121,7 +128,8 @@ const db = {
   Post,
   PostLike,
   PostComment,
-  Notice
+  Notice,
+  Report
 };
 
 module.exports = db;

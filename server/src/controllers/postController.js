@@ -1,4 +1,4 @@
-const { Post, PostLike, PostComment, User, Department, Connection, Notification } = require('../models');
+const { Post, PostLike, PostComment, User, Department, Connection, Notification, Report } = require('../models');
 const { Op } = require('sequelize');
 const { emitNotification } = require('../socket/index');
 
@@ -147,4 +147,26 @@ const addComment = async (req, res) => {
   }
 };
 
-module.exports = { getFeed, createPost, getPost, deletePost, toggleLike, addComment };
+const reportPost = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const allowed = ['spam', 'harassment', 'inappropriate', 'misinformation', 'other'];
+    if (!reason || !allowed.includes(reason)) {
+      return res.status(400).json({ error: 'Invalid reason' });
+    }
+
+    const post = await Post.findByPk(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+
+    const existing = await Report.findOne({ where: { reporter_id: req.user.id, post_id: req.params.id } });
+    if (existing) return res.status(409).json({ error: 'You have already reported this post' });
+
+    await Report.create({ reporter_id: req.user.id, post_id: req.params.id, reason });
+    res.status(201).json({ message: 'Post reported' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = { getFeed, createPost, getPost, deletePost, toggleLike, addComment, reportPost };

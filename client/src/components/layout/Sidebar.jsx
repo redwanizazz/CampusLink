@@ -6,7 +6,7 @@ import { useSocketStore } from '../../store/useSocketStore';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const { user } = useAuthStore();
-  const { unreadMessageCount, clearUnreadMessages } = useSocketStore();
+  const { unreadCount: unreadMessageCount, clearUnread: clearUnreadMessages } = useSocketStore();
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },

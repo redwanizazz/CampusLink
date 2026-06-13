@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { ClipboardList, BarChart2, TrendingUp, Clock, BookOpen } from 'lucide-react';
+import { ClipboardList, BarChart2, TrendingUp, Clock, BookOpen, Award } from 'lucide-react';
 
 const tabs = [
   { label: 'Overview', path: '/academics', icon: BookOpen, exact: true },
   { label: 'Attendance', path: '/academics/attendance', icon: ClipboardList },
   { label: 'Marks', path: '/academics/marks', icon: BarChart2 },
+  { label: 'Results', path: '/academics/results', icon: Award },
   { label: 'CGPA', path: '/academics/cgpa', icon: TrendingUp },
   { label: 'Routine', path: '/academics/routine', icon: Clock },
 ];

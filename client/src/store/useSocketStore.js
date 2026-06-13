@@ -24,27 +24,23 @@ export const useSocketStore = create((set, get) => ({
 
     socketInstance.on('connect', () => {
       set({ socket: socketInstance, isConnected: true });
+      toast.dismiss('socket-disconnect');
     });
 
     socketInstance.on('disconnect', () => {
       set({ isConnected: false });
+      toast.error('Connection lost. Reconnecting…', { id: 'socket-disconnect', duration: 3000 });
     });
 
     socketInstance.on('notification', (payload) => {
       set(state => ({ unreadCount: state.unreadCount + 1 }));
-      toast(payload.content, {
-        icon: '🔔',
-        duration: 4000,
-      });
+      toast(payload.content, { duration: 4000 });
     });
 
     socketInstance.on('event_update', (payload) => {
       const currentUserId = useAuthStore.getState().user?.id;
       if (payload.organizer_id === currentUserId) return;
-      toast(`New event: "${payload.title}"`, {
-        icon: '📅',
-        duration: 4000,
-      });
+      toast(`New event: "${payload.title}"`, { duration: 4000 });
     });
   },
 
