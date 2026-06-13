@@ -30,4 +30,24 @@ const sendPasswordResetEmail = async (to, resetUrl) => {
   });
 };
 
-module.exports = { sendPasswordResetEmail };
+const sendUrgentNoticeEmail = async (to, title, content, noticeUrl) => {
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || 'noreply@campuslink.edu',
+    to,
+    subject: `[URGENT] CampusLink Notice: ${title}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#dc2626">⚠ Urgent Notice — CampusLink</h2>
+        <h3 style="color:#111827">${title}</h3>
+        <p style="color:#374151;line-height:1.6">${content}</p>
+        <p style="margin:24px 0">
+          <a href="${noticeUrl}" style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:600">View Full Notice</a>
+        </p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
+        <p style="color:#9ca3af;font-size:12px">CampusLink &mdash; Campus Communication Platform</p>
+      </div>
+    `,
+  });
+};
+
+module.exports = { sendPasswordResetEmail, sendUrgentNoticeEmail };

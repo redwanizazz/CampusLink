@@ -5,8 +5,10 @@ const { emitNotification } = require('../socket/index');
 const getFeed = async (req, res) => {
   try {
     const userId = req.user.id;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, parseInt(req.query.limit) || 10);
+    const offset = (page - 1) * limit;
 
-    // Gather IDs of accepted connections
     const connections = await Connection.findAll({
       where: {
         status: 'accepted',
@@ -18,7 +20,7 @@ const getFeed = async (req, res) => {
     );
     connectedIds.push(userId);
 
-    const posts = await Post.findAll({
+    const { count, rows: posts } = await Post.findAndCountAll({
       where: {
         [Op.or]: [
           { visibility: 'public' },
@@ -37,10 +39,17 @@ const getFeed = async (req, res) => {
         }
       ],
       order: [['created_at', 'DESC']],
-      limit: 20
+      limit,
+      offset,
+      distinct: true,
     });
 
-    res.status(200).json(posts);
+    res.status(200).json({
+      posts,
+      hasMore: offset + posts.length < count,
+      total: count,
+      page,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -49,10 +58,11 @@ const getFeed = async (req, res) => {
 
 const createPost = async (req, res) => {
   try {
-    const { content, visibility } = req.body;
+    const { content, visibility, image_url } = req.body;
     const post = await Post.create({
       author_id: req.user.id,
       content,
+      image_url: image_url || null,
       visibility: visibility || 'public'
     });
     res.status(201).json(post);

@@ -33,6 +33,7 @@ const Messages = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [groupSeenBy, setGroupSeenBy] = useState({});
   const typingTimer = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -51,6 +52,7 @@ const Messages = () => {
     if (activeChat?.id && !isTempChat(activeChat)) {
       socket?.emit('join_chat', activeChat.id);
       fetchMessages(activeChat.id);
+      setGroupSeenBy({});
     }
     return () => {
       if (activeChat?.id) socket?.emit('leave_chat', activeChat.id);
@@ -83,14 +85,25 @@ const Messages = () => {
 
     const handleStopTyping = () => setIsTyping(false);
 
+    const handleGroupSeen = ({ messageId, userId: uid, userName }) => {
+      if (uid === currentUser.id) return;
+      setGroupSeenBy(prev => {
+        const existing = prev[messageId] ?? [];
+        if (existing.some(s => s.userId === uid)) return prev;
+        return { ...prev, [messageId]: [...existing, { userId: uid, userName }] };
+      });
+    };
+
     socket.on('receiveMessage', handleReceiveMessage);
     socket.on('typing', handleTyping);
     socket.on('stop_typing', handleStopTyping);
+    socket.on('group_seen', handleGroupSeen);
 
     return () => {
       socket.off('receiveMessage', handleReceiveMessage);
       socket.off('typing', handleTyping);
       socket.off('stop_typing', handleStopTyping);
+      socket.off('group_seen', handleGroupSeen);
     };
   }, [socket, activeChat, currentUser]);
 
@@ -114,6 +127,10 @@ const Messages = () => {
       const data = await getMessages(chatId);
       setMessages(data);
       scrollToBottom();
+      const lastMsg = data[data.length - 1];
+      if (isGroup(activeChat) && lastMsg?.id) {
+        socket?.emit('mark_group_read', { chatId, messageId: lastMsg.id });
+      }
     } catch {
       toast.error('Failed to load messages');
     }
@@ -370,6 +387,8 @@ const Messages = () => {
               {messages.map((msg, i) => {
                 const isMine = msg.sender_id === currentUser.id;
                 const showSenderLabel = isGroup(activeChat) && !isMine;
+                const isLastMine = isMine && isGroup(activeChat) && messages.slice(i + 1).every(m => m.sender_id !== currentUser.id || !m.id);
+                const seenBy = isLastMine ? (groupSeenBy[msg.id] ?? []) : [];
                 return (
                   <div key={msg.id ?? i} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                     {showSenderLabel && (
@@ -383,6 +402,11 @@ const Messages = () => {
                         {formatTime(msg.sent_at)}
                       </p>
                     </div>
+                    {seenBy.length > 0 && (
+                      <p className="text-[10px] text-gray-400 mt-0.5 pr-1">
+                        Seen by {seenBy.map(s => s.userName).join(', ')}
+                      </p>
+                    )}
                   </div>
                 );
               })}

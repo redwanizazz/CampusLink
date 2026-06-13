@@ -5,7 +5,9 @@ import { getEvent, rsvpEvent } from '../../api/event';
 import { useAuthStore } from '../../store/useAuthStore';
 import Avatar from '../../components/ui/Avatar';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { Calendar, MapPin, Phone, Users, ArrowLeft } from 'lucide-react';
+import { Calendar, MapPin, Phone, Users, ArrowLeft, Download } from 'lucide-react';
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -88,11 +90,21 @@ const EventDetail = () => {
           </div>
 
           {/* RSVP stats */}
-          <div className="flex items-center gap-4 py-3 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700">
             <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
               <Users className="size-4" />
               <span>{going} going · {interested} interested</span>
             </div>
+            {(user?.id === event.Organizer?.id || user?.role === 'admin') && (
+              <a
+                href={`${API_BASE}/api/v1/events/${event.id}/export-rsvp`}
+                download
+                className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 transition-colors"
+              >
+                <Download className="size-4" />
+                Export CSV
+              </a>
+            )}
           </div>
 
           {/* RSVP buttons */}

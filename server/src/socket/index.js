@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { Chat, ChatMember, Message, User } = require('../models');
+const { sendPushToUser } = require('../controllers/pushController');
 
 // userId -> socketId
 const connectedUsers = new Map();
@@ -9,6 +10,7 @@ let _io = null;
 
 const emitNotification = (userId, payload) => {
   if (_io) _io.to(`user:${userId}`).emit('notification', payload);
+  sendPushToUser(userId, { title: 'CampusLink', body: payload.content, url: payload.link_url });
 };
 
 const broadcastEventUpdate = (payload) => {
@@ -156,6 +158,20 @@ const initSocket = (io) => {
       } catch (error) {
         console.error('Socket sendMessage error:', error);
         if (callback) callback({ success: false, error: 'Failed to send message' });
+      }
+    });
+
+    socket.on('mark_group_read', async ({ chatId, messageId }) => {
+      try {
+        const sender = await User.findByPk(userId, { attributes: ['id', 'full_name'] });
+        socket.to(`chat:${chatId}`).emit('group_seen', {
+          chatId,
+          messageId,
+          userId,
+          userName: sender?.full_name ?? 'Someone',
+        });
+      } catch (err) {
+        console.error('mark_group_read error:', err);
       }
     });
 

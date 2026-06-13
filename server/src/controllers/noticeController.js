@@ -1,4 +1,5 @@
 const { Notice, User, Department } = require('../models');
+const { sendUrgentNoticeEmail } = require('../utils/mailer');
 
 const getNotices = async (req, res) => {
   try {
@@ -48,6 +49,20 @@ const createNotice = async (req, res) => {
       priority: priority || 'normal'
     });
     res.status(201).json(notice);
+
+    if (priority === 'urgent') {
+      try {
+        const where = { role: 'student' };
+        if (department_id) where.department_id = department_id;
+        const students = await User.findAll({ where, attributes: ['email'] });
+        const noticeUrl = `${process.env.CLIENT_URL}/noticeboard/${notice.id}`;
+        await Promise.allSettled(
+          students.map(s => sendUrgentNoticeEmail(s.email, title, content, noticeUrl))
+        );
+      } catch (mailErr) {
+        console.error('Urgent notice email error:', mailErr.message);
+      }
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

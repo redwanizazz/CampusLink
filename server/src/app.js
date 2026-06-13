@@ -51,6 +51,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const pushRoutes = require('./routes/pushRoutes');
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'CampusLink API is running' });
@@ -69,6 +70,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+app.use('/api/v1/push', pushRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
