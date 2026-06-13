@@ -1,11 +1,15 @@
 const webPush = require('web-push');
 const { PushSubscription } = require('../models');
 
-webPush.setVapidDetails(
-  `mailto:${process.env.SMTP_FROM || 'noreply@campuslink.edu'}`,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webPush.setVapidDetails(
+    `mailto:${process.env.SMTP_FROM || 'noreply@campuslink.edu'}`,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+} else {
+  console.warn('VAPID keys not set — web push notifications disabled.');
+}
 
 const subscribe = async (req, res) => {
   try {
