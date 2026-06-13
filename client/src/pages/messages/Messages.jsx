@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { getChats, getMessages, getChatByUserId } from '../../api/chat';
+import { getChats, getMessages, getChatByUserId, markChatAsRead } from '../../api/chat';
 import { getProfile } from '../../api/user';
 import { uploadFile } from '../../api/upload';
 import { useSocketStore } from '../../store/useSocketStore';
@@ -53,6 +53,9 @@ const Messages = () => {
       socket?.emit('join_chat', activeChat.id);
       fetchMessages(activeChat.id);
       setGroupSeenBy({});
+      // Mark all incoming messages in this chat as read, both server-side and in our local list
+      markChatAsRead(activeChat.id).catch(() => { /* ignore */ });
+      setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, unreadCount: 0 } : c));
     }
     return () => {
       if (activeChat?.id) socket?.emit('leave_chat', activeChat.id);
@@ -63,16 +66,26 @@ const Messages = () => {
     if (!socket) return;
 
     const handleReceiveMessage = (message) => {
-      if (activeChat && message.chat_id === activeChat.id) {
+      const isActiveChat = activeChat && message.chat_id === activeChat.id;
+      const isOwn = message.sender_id === currentUser.id;
+
+      if (isActiveChat) {
         setMessages(prev => [...prev, message]);
         scrollToBottom();
+        // Active chat is open — silently mark the new message as read server-side
+        if (!isOwn) markChatAsRead(activeChat.id).catch(() => {});
       }
       setChats(prev => {
         const idx = prev.findIndex(c => c.id === message.chat_id);
         if (idx >= 0) {
           const updated = [...prev];
           const [chat] = updated.splice(idx, 1);
-          return [{ ...chat, latestMessage: message }, ...updated];
+          const bumpUnread = !isActiveChat && !isOwn;
+          return [{
+            ...chat,
+            latestMessage: message,
+            unreadCount: bumpUnread ? (chat.unreadCount || 0) + 1 : (isActiveChat ? 0 : (chat.unreadCount || 0)),
+          }, ...updated];
         }
         fetchChats();
         return prev;
@@ -321,6 +334,7 @@ const Messages = () => {
             chats.map(chat => {
               const group = isGroup(chat);
               const title = group ? chat.name : chat.otherUser?.full_name;
+              const unread = (chat.unreadCount || 0) > 0;
               return (
                 <div
                   key={chat.id}
@@ -338,19 +352,28 @@ const Messages = () => {
                     <Avatar user={chat.otherUser} size="md" className="flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline">
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <div className="flex justify-between items-baseline gap-2">
+                      <h3 className={`text-sm truncate ${unread ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-900 dark:text-white'}`}>
                         {title}
-                        {group && <span className="text-xs text-gray-400 ml-1">· {chat.memberCount}</span>}
+                        {group && <span className="text-xs text-gray-400 ml-1 font-normal">· {chat.memberCount}</span>}
                       </h3>
                       {chat.latestMessage && (
-                        <span className="text-xs text-gray-400 ml-1 flex-shrink-0">{formatTime(chat.latestMessage.sent_at)}</span>
+                        <span className={`text-xs ml-1 flex-shrink-0 ${unread ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-gray-400'}`}>
+                          {formatTime(chat.latestMessage.sent_at)}
+                        </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 truncate">
-                      {group ? groupPreviewPrefix(chat.latestMessage) : ''}
-                      {previewText(chat.latestMessage)}
-                    </p>
+                    <div className="flex justify-between items-center gap-2">
+                      <p className={`text-xs truncate ${unread ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-500'}`}>
+                        {group ? groupPreviewPrefix(chat.latestMessage) : ''}
+                        {previewText(chat.latestMessage)}
+                      </p>
+                      {unread && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-600 text-white text-[10px] font-semibold flex-shrink-0">
+                          {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

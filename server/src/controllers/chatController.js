@@ -1,5 +1,5 @@
 const { Chat, ChatMember, Message, User, Department } = require('../models');
-const { Op } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 
 const getChats = async (req, res) => {
   try {
@@ -32,15 +32,30 @@ const getChats = async (req, res) => {
       ]
     });
 
+    // Count unread messages per chat (messages from others that haven't been read yet)
+    const unreadRows = await Message.findAll({
+      where: {
+        chat_id: { [Op.in]: chatIds },
+        sender_id: { [Op.ne]: userId },
+        read_at: null,
+      },
+      attributes: ['chat_id', [fn('COUNT', col('id')), 'count']],
+      group: ['chat_id'],
+      raw: true,
+    });
+    const unreadMap = new Map(unreadRows.map(r => [r.chat_id, parseInt(r.count)]));
+
     const formatted = chats.map(chat => {
       const members = chat.ChatMembers || [];
+      const unreadCount = unreadMap.get(chat.id) || 0;
       if (chat.type === 'direct') {
         const other = members.find(m => m.user_id !== userId);
         return {
           id: chat.id,
           type: 'direct',
           otherUser: other?.User,
-          latestMessage: chat.Messages[0] || null
+          latestMessage: chat.Messages[0] || null,
+          unreadCount,
         };
       }
       return {
@@ -50,7 +65,8 @@ const getChats = async (req, res) => {
         created_by: chat.created_by,
         members: members.map(m => m.User).filter(Boolean),
         memberCount: members.length,
-        latestMessage: chat.Messages[0] || null
+        latestMessage: chat.Messages[0] || null,
+        unreadCount,
       };
     });
 
@@ -239,11 +255,32 @@ const getChatDetails = async (req, res) => {
   }
 };
 
+const markChatAsRead = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user.id;
+
+    const isMember = await ChatMember.findOne({ where: { chat_id: chatId, user_id: userId } });
+    if (!isMember) return res.status(403).json({ error: 'Not authorized' });
+
+    await Message.update(
+      { read_at: new Date() },
+      { where: { chat_id: chatId, sender_id: { [Op.ne]: userId }, read_at: null } }
+    );
+
+    res.status(200).json({ message: 'Marked as read' });
+  } catch (error) {
+    console.error('Error marking chat as read:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getChats,
   getMessages,
   getChatByUserId,
   createOrGetDirectChat,
   createGroupChat,
-  getChatDetails
+  getChatDetails,
+  markChatAsRead,
 };

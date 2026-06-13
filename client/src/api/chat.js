@@ -26,3 +26,8 @@ export const getChatDetails = async (chatId) => {
   const response = await axiosInstance.get(`/chats/${chatId}/details`);
   return response.data;
 };
+
+export const markChatAsRead = async (chatId) => {
+  const response = await axiosInstance.post(`/chats/${chatId}/read`);
+  return response.data;
+};

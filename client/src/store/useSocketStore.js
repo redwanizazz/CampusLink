@@ -9,6 +9,7 @@ export const useSocketStore = create((set, get) => ({
   socket: null,
   isConnected: false,
   unreadCount: 0,
+  unreadMessageCount: 0,
 
   connect: () => {
     const token = useAuthStore.getState().token;
@@ -42,9 +43,18 @@ export const useSocketStore = create((set, get) => ({
       if (payload.organizer_id === currentUserId) return;
       toast(`New event: "${payload.title}"`, { duration: 4000 });
     });
+
+    socketInstance.on('receiveMessage', (message) => {
+      const currentUserId = useAuthStore.getState().user?.id;
+      if (message.sender_id === currentUserId) return;
+      // Don't count if user is already on the messages page
+      if (window.location.pathname.startsWith('/messages')) return;
+      set(state => ({ unreadMessageCount: state.unreadMessageCount + 1 }));
+    });
   },
 
   clearUnread: () => set({ unreadCount: 0 }),
+  clearUnreadMessages: () => set({ unreadMessageCount: 0 }),
 
   disconnect: () => {
     if (socketInstance) {
