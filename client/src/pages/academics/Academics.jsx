@@ -1,11 +1,13 @@
-import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { ClipboardList, BarChart2, TrendingUp, Clock, BookOpen } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, Outlet, useLocation }  from 'react-router-dom';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { ClipboardList, BarChart2, TrendingUp, Clock, BookOpen, Award } from 'lucide-react';
 
 const tabs = [
   { label: 'Overview', path: '/academics', icon: BookOpen, exact: true },
   { label: 'Attendance', path: '/academics/attendance', icon: ClipboardList },
   { label: 'Marks', path: '/academics/marks', icon: BarChart2 },
+  { label: 'Results', path: '/academics/results', icon: Award },
   { label: 'CGPA', path: '/academics/cgpa', icon: TrendingUp },
   { label: 'Routine', path: '/academics/routine', icon: Clock },
 ];
@@ -13,6 +15,8 @@ const tabs = [
 const Academics = () => {
   const { pathname } = useLocation();
   const isOverview = pathname === '/academics';
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 300); return () => clearTimeout(t); }, []);
 
   return (
     <div className="space-y-6">
@@ -34,16 +38,24 @@ const Academics = () => {
       </div>
 
       {isOverview ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {tabs.slice(1).map(({ label, path, icon: Icon }) => (
-            <Link key={path} to={path} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center mb-3">
-                <Icon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">{label}</h3>
-            </Link>
-          ))}
-        </div>
+        !mounted ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {tabs.slice(1).map(({ path }) => (
+              <Skeleton key={path} className="h-32 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {tabs.slice(1).map(({ label, path, icon: Icon }) => (
+              <Link key={path} to={path} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center mb-3">
+                  <Icon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{label}</h3>
+              </Link>
+            ))}
+          </div>
+        )
       ) : (
         <Outlet />
       )}

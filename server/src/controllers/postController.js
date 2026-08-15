@@ -1,12 +1,14 @@
-const { Post, PostLike, PostComment, User, Department, Connection, Notification } = require('../models');
+const { Post, PostLike, PostComment, User, Department, Connection, Notification, Report } = require('../models');
 const { Op } = require('sequelize');
 const { emitNotification } = require('../socket/index');
 
 const getFeed = async (req, res) => {
   try {
     const userId = req.user.id;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, parseInt(req.query.limit) || 10);
+    const offset = (page - 1) * limit;
 
-    // Gather IDs of accepted connections
     const connections = await Connection.findAll({
       where: {
         status: 'accepted',
@@ -18,7 +20,7 @@ const getFeed = async (req, res) => {
     );
     connectedIds.push(userId);
 
-    const posts = await Post.findAll({
+    const { count, rows: posts } = await Post.findAndCountAll({
       where: {
         [Op.or]: [
           { visibility: 'public' },
@@ -37,10 +39,17 @@ const getFeed = async (req, res) => {
         }
       ],
       order: [['created_at', 'DESC']],
-      limit: 20
+      limit,
+      offset,
+      distinct: true,
     });
 
-    res.status(200).json(posts);
+    res.status(200).json({
+      posts,
+      hasMore: offset + posts.length < count,
+      total: count,
+      page,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -49,10 +58,11 @@ const getFeed = async (req, res) => {
 
 const createPost = async (req, res) => {
   try {
-    const { content, visibility } = req.body;
+    const { content, visibility, image_url } = req.body;
     const post = await Post.create({
       author_id: req.user.id,
       content,
+      image_url: image_url || null,
       visibility: visibility || 'public'
     });
     res.status(201).json(post);
@@ -147,4 +157,26 @@ const addComment = async (req, res) => {
   }
 };
 
-module.exports = { getFeed, createPost, getPost, deletePost, toggleLike, addComment };
+const reportPost = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const allowed = ['spam', 'harassment', 'inappropriate', 'misinformation', 'other'];
+    if (!reason || !allowed.includes(reason)) {
+      return res.status(400).json({ error: 'Invalid reason' });
+    }
+
+    const post = await Post.findByPk(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+
+    const existing = await Report.findOne({ where: { reporter_id: req.user.id, post_id: req.params.id } });
+    if (existing) return res.status(409).json({ error: 'You have already reported this post' });
+
+    await Report.create({ reporter_id: req.user.id, post_id: req.params.id, reason });
+    res.status(201).json({ message: 'Post reported' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = { getFeed, createPost, getPost, deletePost, toggleLike, addComment, reportPost };

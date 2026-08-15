@@ -6,6 +6,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/useAuthStore';
 import { login as loginApi } from '../../api/auth';
+import { subscribeToPush } from '../../api/push';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { BookOpen } from 'lucide-react';
@@ -29,6 +30,7 @@ const Login = () => {
       setIsLoading(true);
       const response = await loginApi(data);
       setAuth(response.user, response.accessToken);
+      subscribeToPush();
       toast.success('Login successful!');
       navigate('/dashboard');
     } catch (error) {

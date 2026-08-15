@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { getChats, getMessages, getChatByUserId } from '../../api/chat';
+import { useSearchParams, Link } from 'react-router-dom';
+import { getChats, getMessages, getChatByUserId, markChatAsRead } from '../../api/chat';
 import { getProfile } from '../../api/user';
 import { uploadFile } from '../../api/upload';
 import { useSocketStore } from '../../store/useSocketStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import Avatar from '../../components/ui/Avatar';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { Send, Paperclip, Loader2 } from 'lucide-react';
+import CreateGroupModal from '../../components/messages/CreateGroupModal';
+import { Send, Paperclip, Loader2, Users, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
 
 const resolveUrl = (url) => url?.startsWith('http') ? url : `${API_BASE}${url}`;
+
+const isGroup = (chat) => chat?.type === 'group';
+const isTempChat = (chat) => chat?.id?.toString().startsWith('temp_');
 
 const Messages = () => {
   const [searchParams] = useSearchParams();
@@ -28,6 +32,8 @@ const Messages = () => {
   const [loadingChats, setLoadingChats] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [groupSeenBy, setGroupSeenBy] = useState({});
   const typingTimer = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -43,9 +49,13 @@ const Messages = () => {
   }, [initialUserId]);
 
   useEffect(() => {
-    if (activeChat?.id && !activeChat.id.toString().startsWith('temp_')) {
+    if (activeChat?.id && !isTempChat(activeChat)) {
       socket?.emit('join_chat', activeChat.id);
       fetchMessages(activeChat.id);
+      setGroupSeenBy({});
+      // Mark all incoming messages in this chat as read, both server-side and in our local list
+      markChatAsRead(activeChat.id).catch(() => { /* ignore */ });
+      setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, unreadCount: 0 } : c));
     }
     return () => {
       if (activeChat?.id) socket?.emit('leave_chat', activeChat.id);
@@ -56,16 +66,26 @@ const Messages = () => {
     if (!socket) return;
 
     const handleReceiveMessage = (message) => {
-      if (activeChat && message.chat_id === activeChat.id) {
+      const isActiveChat = activeChat && message.chat_id === activeChat.id;
+      const isOwn = message.sender_id === currentUser.id;
+
+      if (isActiveChat) {
         setMessages(prev => [...prev, message]);
         scrollToBottom();
+        // Active chat is open — silently mark the new message as read server-side
+        if (!isOwn) markChatAsRead(activeChat.id).catch(() => {});
       }
       setChats(prev => {
         const idx = prev.findIndex(c => c.id === message.chat_id);
         if (idx >= 0) {
           const updated = [...prev];
           const [chat] = updated.splice(idx, 1);
-          return [{ ...chat, latestMessage: message }, ...updated];
+          const bumpUnread = !isActiveChat && !isOwn;
+          return [{
+            ...chat,
+            latestMessage: message,
+            unreadCount: bumpUnread ? (chat.unreadCount || 0) + 1 : (isActiveChat ? 0 : (chat.unreadCount || 0)),
+          }, ...updated];
         }
         fetchChats();
         return prev;
@@ -78,14 +98,25 @@ const Messages = () => {
 
     const handleStopTyping = () => setIsTyping(false);
 
+    const handleGroupSeen = ({ messageId, userId: uid, userName }) => {
+      if (uid === currentUser.id) return;
+      setGroupSeenBy(prev => {
+        const existing = prev[messageId] ?? [];
+        if (existing.some(s => s.userId === uid)) return prev;
+        return { ...prev, [messageId]: [...existing, { userId: uid, userName }] };
+      });
+    };
+
     socket.on('receiveMessage', handleReceiveMessage);
     socket.on('typing', handleTyping);
     socket.on('stop_typing', handleStopTyping);
+    socket.on('group_seen', handleGroupSeen);
 
     return () => {
       socket.off('receiveMessage', handleReceiveMessage);
       socket.off('typing', handleTyping);
       socket.off('stop_typing', handleStopTyping);
+      socket.off('group_seen', handleGroupSeen);
     };
   }, [socket, activeChat, currentUser]);
 
@@ -109,6 +140,10 @@ const Messages = () => {
       const data = await getMessages(chatId);
       setMessages(data);
       scrollToBottom();
+      const lastMsg = data[data.length - 1];
+      if (isGroup(activeChat) && lastMsg?.id) {
+        socket?.emit('mark_group_read', { chatId, messageId: lastMsg.id });
+      }
     } catch {
       toast.error('Failed to load messages');
     }
@@ -123,11 +158,11 @@ const Messages = () => {
           setActiveChat(chatObj);
         } else {
           const profileData = await getProfile(targetUserId);
-          setActiveChat({ id: existing.chat_id, otherUser: profileData.user });
+          setActiveChat({ id: existing.chat_id, type: 'direct', otherUser: profileData.user });
         }
       } else {
         const profileData = await getProfile(targetUserId);
-        setActiveChat({ id: `temp_${targetUserId}`, otherUser: profileData.user });
+        setActiveChat({ id: `temp_${targetUserId}`, type: 'direct', otherUser: profileData.user });
         setMessages([]);
       }
     } catch (err) {
@@ -135,8 +170,14 @@ const Messages = () => {
     }
   };
 
+  const handleGroupCreated = (group) => {
+    setChats(prev => [group, ...prev]);
+    setActiveChat(group);
+    setMessages([]);
+  };
+
   const handleTypingEmit = () => {
-    if (!activeChat || activeChat.id.toString().startsWith('temp_')) return;
+    if (!activeChat || isTempChat(activeChat)) return;
     socket?.emit('typing', { chatId: activeChat.id });
     clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => {
@@ -144,19 +185,24 @@ const Messages = () => {
     }, 1500);
   };
 
+  // For groups + existing direct chats use chatId; for new temp_ direct use receiverId.
+  const buildSendPayload = (content, attachmentUrl) => {
+    if (isGroup(activeChat) || !isTempChat(activeChat)) {
+      return { chatId: activeChat.id, content, attachmentUrl };
+    }
+    return { receiverId: activeChat.otherUser.id, content, attachmentUrl };
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeChat || !socket) return;
 
-    socket.emit('sendMessage', {
-      receiverId: activeChat.otherUser.id,
-      content: newMessage,
-    }, (response) => {
+    socket.emit('sendMessage', buildSendPayload(newMessage), (response) => {
       if (response.success) {
         setMessages(prev => [...prev, response.message]);
         scrollToBottom();
         setNewMessage('');
-        if (activeChat.id.toString().startsWith('temp_')) {
+        if (isTempChat(activeChat)) {
           setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
           fetchChats();
         } else {
@@ -184,20 +230,12 @@ const Messages = () => {
       const { url, originalName, mimeType } = await uploadFile(file);
       const fileContent = JSON.stringify({ url, originalName, mimeType });
 
-      socket.emit('sendMessage', {
-        receiverId: activeChat.otherUser.id,
-        content: fileContent,
-        attachmentUrl: url,
-      }, (response) => {
+      socket.emit('sendMessage', buildSendPayload(fileContent, url), (response) => {
         if (!response?.success) {
           toast.error('Failed to send file');
-        } else {
-          setMessages(prev => [...prev, response.message]);
-          scrollToBottom();
-          if (activeChat.id.toString().startsWith('temp_')) {
-            setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
-            fetchChats();
-          }
+        } else if (isTempChat(activeChat)) {
+          setActiveChat(prev => ({ ...prev, id: response.message.chat_id }));
+          fetchChats();
         }
       });
     } catch {
@@ -244,21 +282,39 @@ const Messages = () => {
     return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const previewText = (msg) => {
+    if (!msg) return 'New conversation';
+    if (msg.type === 'file') return '📎 Attachment';
+    return msg.content;
+  };
+
+  const groupPreviewPrefix = (msg) =>
+    msg?.Sender && msg.sender_id !== currentUser.id ? `${msg.Sender.full_name.split(' ')[0]}: ` : '';
+
   return (
     <div className="flex h-[calc(100vh-8rem)] bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
 
       {/* Chat list sidebar */}
       <div className="w-80 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Messages</h2>
+          <button
+            type="button"
+            onClick={() => setGroupModalOpen(true)}
+            className="flex items-center gap-1 text-xs font-medium bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+            title="Create group chat"
+          >
+            <Plus className="size-3.5" />
+            <span>Group</span>
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loadingChats ? (
-            <div className="p-4 space-y-3">
+            <div className="p-4 gap-3 flex flex-col">
               {[1, 2, 3].map(i => (
                 <div key={i} className="flex items-center gap-3">
                   <Skeleton className="size-10 rounded-full flex-shrink-0" />
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1 gap-2 flex flex-col">
                     <Skeleton className="h-3 w-24" />
                     <Skeleton className="h-3 w-40" />
                   </div>
@@ -266,33 +322,64 @@ const Messages = () => {
               ))}
             </div>
           ) : chats.length === 0 ? (
-            <p className="p-6 text-center text-sm text-gray-500">No conversations yet. Connect with people in the Network tab.</p>
-          ) : (
-            chats.map(chat => (
-              <div
-                key={chat.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setActiveChat(chat)}
-                onKeyDown={e => e.key === 'Enter' && setActiveChat(chat)}
-                className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex items-center gap-3 ${activeChat?.id === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''}`}
+            <div className="p-6 text-center space-y-3">
+              <Users className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600" />
+              <p className="text-sm text-gray-500">No conversations yet.</p>
+              <Link
+                to="/network"
+                className="inline-block text-sm text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
               >
-                <Avatar user={chat.otherUser} size="md" className="flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-baseline">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">{chat.otherUser?.full_name}</h3>
-                    {chat.latestMessage && (
-                      <span className="text-xs text-gray-400 ml-1 flex-shrink-0">{formatTime(chat.latestMessage.sent_at)}</span>
-                    )}
+                Find people to message
+              </Link>
+            </div>
+          ) : (
+            chats.map(chat => {
+              const group = isGroup(chat);
+              const title = group ? chat.name : chat.otherUser?.full_name;
+              const unread = (chat.unreadCount || 0) > 0;
+              return (
+                <div
+                  key={chat.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setActiveChat(chat)}
+                  onKeyDown={e => e.key === 'Enter' && setActiveChat(chat)}
+                  className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors flex items-center gap-3 ${activeChat?.id === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : ''}`}
+                >
+                  {group ? (
+                    <div className="size-10 flex-shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white">
+                      <Users className="size-5" />
+                    </div>
+                  ) : (
+                    <Avatar user={chat.otherUser} size="md" className="flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline gap-2">
+                      <h3 className={`text-sm truncate ${unread ? 'font-bold text-gray-900 dark:text-white' : 'font-medium text-gray-900 dark:text-white'}`}>
+                        {title}
+                        {group && <span className="text-xs text-gray-400 ml-1 font-normal">· {chat.memberCount}</span>}
+                      </h3>
+                      {chat.latestMessage && (
+                        <span className={`text-xs ml-1 flex-shrink-0 ${unread ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-gray-400'}`}>
+                          {formatTime(chat.latestMessage.sent_at)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex justify-between items-center gap-2">
+                      <p className={`text-xs truncate ${unread ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-500'}`}>
+                        {group ? groupPreviewPrefix(chat.latestMessage) : ''}
+                        {previewText(chat.latestMessage)}
+                      </p>
+                      {unread && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-indigo-600 text-white text-[10px] font-semibold flex-shrink-0">
+                          {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 truncate">
-                    {chat.latestMessage
-                      ? (chat.latestMessage.type === 'file' ? '📎 Attachment' : chat.latestMessage.content)
-                      : 'New conversation'}
-                  </p>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -302,24 +389,49 @@ const Messages = () => {
         {activeChat ? (
           <>
             <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 shadow-sm">
-              <Avatar user={activeChat.otherUser} size="md" />
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white">{activeChat.otherUser?.full_name}</h3>
-                {isTyping && <p className="text-xs text-indigo-500 animate-pulse">typing...</p>}
+              {isGroup(activeChat) ? (
+                <div className="size-10 flex-shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white">
+                  <Users className="size-5" />
+                </div>
+              ) : (
+                <Avatar user={activeChat.otherUser} size="md" />
+              )}
+              <div className="min-w-0">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  {isGroup(activeChat) ? activeChat.name : activeChat.otherUser?.full_name}
+                </h3>
+                {isGroup(activeChat) ? (
+                  <p className="text-xs text-gray-500">{activeChat.memberCount} members</p>
+                ) : isTyping ? (
+                  <p className="text-xs text-indigo-500 animate-pulse">typing...</p>
+                ) : null}
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 gap-3 flex flex-col">
               {messages.map((msg, i) => {
                 const isMine = msg.sender_id === currentUser.id;
+                const showSenderLabel = isGroup(activeChat) && !isMine;
+                const isLastMine = isMine && isGroup(activeChat) && messages.slice(i + 1).every(m => m.sender_id !== currentUser.id || !m.id);
+                const seenBy = isLastMine ? (groupSeenBy[msg.id] ?? []) : [];
                 return (
-                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  <div key={msg.id ?? i} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+                    {showSenderLabel && (
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5 px-1">
+                        {msg.Sender?.full_name || 'Unknown'}
+                      </span>
+                    )}
                     <div className={`max-w-[70%] rounded-2xl px-4 py-2 shadow-sm ${isMine ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-sm border border-gray-100 dark:border-gray-700'}`}>
                       {renderMessageContent(msg, isMine)}
                       <p className={`text-[10px] mt-1 text-right ${isMine ? 'text-indigo-200' : 'text-gray-400'}`}>
                         {formatTime(msg.sent_at)}
                       </p>
                     </div>
+                    {seenBy.length > 0 && (
+                      <p className="text-[10px] text-gray-400 mt-0.5 pr-1">
+                        Seen by {seenBy.map(s => s.userName).join(', ')}
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -371,6 +483,12 @@ const Messages = () => {
           </div>
         )}
       </div>
+
+      <CreateGroupModal
+        open={groupModalOpen}
+        onClose={() => setGroupModalOpen(false)}
+        onCreated={handleGroupCreated}
+      />
     </div>
   );
 };

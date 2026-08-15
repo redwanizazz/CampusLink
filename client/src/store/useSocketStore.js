@@ -9,6 +9,7 @@ export const useSocketStore = create((set, get) => ({
   socket: null,
   isConnected: false,
   unreadCount: 0,
+  unreadMessageCount: 0,
 
   connect: () => {
     const token = useAuthStore.getState().token;
@@ -24,22 +25,36 @@ export const useSocketStore = create((set, get) => ({
 
     socketInstance.on('connect', () => {
       set({ socket: socketInstance, isConnected: true });
+      toast.dismiss('socket-disconnect');
     });
 
     socketInstance.on('disconnect', () => {
       set({ isConnected: false });
+      toast.error('Connection lost. Reconnecting…', { id: 'socket-disconnect', duration: 3000 });
     });
 
     socketInstance.on('notification', (payload) => {
       set(state => ({ unreadCount: state.unreadCount + 1 }));
-      toast(payload.content, {
-        icon: '🔔',
-        duration: 4000,
-      });
+      toast(payload.content, { duration: 4000 });
+    });
+
+    socketInstance.on('event_update', (payload) => {
+      const currentUserId = useAuthStore.getState().user?.id;
+      if (payload.organizer_id === currentUserId) return;
+      toast(`New event: "${payload.title}"`, { duration: 4000 });
+    });
+
+    socketInstance.on('receiveMessage', (message) => {
+      const currentUserId = useAuthStore.getState().user?.id;
+      if (message.sender_id === currentUserId) return;
+      // Don't count if user is already on the messages page
+      if (window.location.pathname.startsWith('/messages')) return;
+      set(state => ({ unreadMessageCount: state.unreadMessageCount + 1 }));
     });
   },
 
   clearUnread: () => set({ unreadCount: 0 }),
+  clearUnreadMessages: () => set({ unreadMessageCount: 0 }),
 
   disconnect: () => {
     if (socketInstance) {

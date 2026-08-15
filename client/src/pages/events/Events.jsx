@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getEvents } from '../../api/event';
 import { Link } from 'react-router-dom';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import { Calendar, MapPin, Plus } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useSocketStore } from '../../store/useSocketStore';
 import { format } from 'date-fns';
 
 const LOCATION_TYPES = ['hall', 'department', 'auditorium', 'field', 'online', 'other'];
 
 const Events = () => {
   const { user } = useAuthStore();
+  const { socket, connect } = useSocketStore();
+  const queryClient = useQueryClient();
   const [locFilter, setLocFilter] = useState('');
   const [upcoming, setUpcoming] = useState(false);
 
@@ -18,6 +21,17 @@ const Events = () => {
     queryKey: ['events', { location_type: locFilter, upcoming }],
     queryFn: () => getEvents({ location_type: locFilter || undefined, upcoming: upcoming ? 'true' : undefined })
   });
+
+  useEffect(() => { connect(); }, [connect]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleEventUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    };
+    socket.on('event_update', handleEventUpdate);
+    return () => socket.off('event_update', handleEventUpdate);
+  }, [socket, queryClient]);
 
   const canCreate = user?.role === 'faculty' || user?.role === 'admin';
 

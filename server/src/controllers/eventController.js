@@ -1,6 +1,6 @@
 const { Event, EventRSVP, User, Department, Notification } = require('../models');
 const { Op } = require('sequelize');
-const { emitNotification } = require('../socket/index');
+const { emitNotification, broadcastEventUpdate } = require('../socket/index');
 
 const getEvents = async (req, res) => {
   try {
@@ -55,6 +55,20 @@ const createEvent = async (req, res) => {
       contact_info
     });
     res.status(201).json(event);
+
+    try {
+      const organizer = await User.findByPk(req.user.id, { attributes: ['full_name'] });
+      broadcastEventUpdate({
+        id: event.id,
+        title: event.title,
+        start_time: event.start_time,
+        venue: event.venue,
+        organizer_id: req.user.id,
+        organizer_name: organizer?.full_name,
+      });
+    } catch (e) {
+      console.error('event_update broadcast error:', e.message);
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -136,4 +150,42 @@ const getMyEvents = async (req, res) => {
   }
 };
 
-module.exports = { getEvents, getEvent, createEvent, updateEvent, deleteEvent, rsvpEvent, getMyEvents };
+const exportAttendees = async (req, res) => {
+  try {
+    const event = await Event.findByPk(req.params.id, {
+      include: [{
+        model: EventRSVP,
+        include: [{ model: User, attributes: ['full_name', 'email', 'student_id', 'batch'] }]
+      }]
+    });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    const isOrganizer = event.organizer_id === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    if (!isOrganizer && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
+
+    const rows = [
+      ['Name', 'Email', 'Student ID', 'Batch', 'RSVP Status', 'Responded At'],
+      ...event.EventRSVPs.map(r => [
+        r.User?.full_name ?? '',
+        r.User?.email ?? '',
+        r.User?.student_id ?? '',
+        r.User?.batch ?? '',
+        r.status,
+        r.responded_at ? new Date(r.responded_at).toISOString() : '',
+      ])
+    ];
+
+    const csv = rows.map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const filename = `${event.title.replace(/[^a-z0-9]/gi, '_')}_attendees.csv`;
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+module.exports = { getEvents, getEvent, createEvent, updateEvent, deleteEvent, rsvpEvent, getMyEvents, exportAttendees };

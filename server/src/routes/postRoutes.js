@@ -11,5 +11,6 @@ router.get('/:id', pc.getPost);
 router.delete('/:id', pc.deletePost);
 router.post('/:id/like', pc.toggleLike);
 router.post('/:id/comments', pc.addComment);
+router.post('/:id/report', pc.reportPost);
 
 module.exports = router;

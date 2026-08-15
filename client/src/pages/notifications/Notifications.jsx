@@ -1,13 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { getNotifications, markRead, markAllRead, deleteNotification } from '../../api/notification';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useSocketStore } from '../../store/useSocketStore';
 
 const Notifications = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const clearUnread = useSocketStore(s => s.clearUnread);
+
+  useEffect(() => { clearUnread(); }, [clearUnread]);
   const { data: notifications = [], isLoading } = useQuery({ queryKey: ['notifications'], queryFn: getNotifications });
 
   const markAllMutation = useMutation({
@@ -24,6 +30,11 @@ const Notifications = () => {
     mutationFn: deleteNotification,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] })
   });
+
+  const handleRowClick = (n) => {
+    if (!n.is_read) markOneMutation.mutate(n.id);
+    if (n.link_url) navigate(n.link_url);
+  };
 
   const unread = notifications.filter(n => !n.is_read).length;
 
@@ -51,7 +62,11 @@ const Notifications = () => {
       ) : (
         <div className="space-y-2">
           {notifications.map(n => (
-            <div key={n.id} className={`flex items-start gap-3 bg-white dark:bg-gray-800 rounded-xl p-4 border transition-colors ${n.is_read ? 'border-gray-200 dark:border-gray-700' : 'border-indigo-200 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10'}`}>
+            <div
+              key={n.id}
+              onClick={() => handleRowClick(n)}
+              className={`flex items-start gap-3 bg-white dark:bg-gray-800 rounded-xl p-4 border transition-colors ${n.link_url ? 'cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600' : ''} ${n.is_read ? 'border-gray-200 dark:border-gray-700' : 'border-indigo-200 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10'}`}
+            >
               {!n.is_read && <div className="size-2 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0" />}
               <div className="flex-1 min-w-0">
                 <p className={`text-sm ${n.is_read ? 'text-gray-700 dark:text-gray-300' : 'text-gray-900 dark:text-white font-medium'}`}>{n.content}</p>
@@ -59,11 +74,19 @@ const Notifications = () => {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {!n.is_read && (
-                  <button type="button" onClick={() => markOneMutation.mutate(n.id)} className="p-1 text-indigo-400 hover:text-indigo-600">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); markOneMutation.mutate(n.id); }}
+                    className="p-1 text-indigo-400 hover:text-indigo-600"
+                  >
                     <CheckCheck className="size-4" />
                   </button>
                 )}
-                <button type="button" onClick={() => deleteMutation.mutate(n.id)} className="p-1 text-gray-400 hover:text-red-500">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(n.id); }}
+                  className="p-1 text-gray-400 hover:text-red-500"
+                >
                   <Trash2 className="size-4" />
                 </button>
               </div>

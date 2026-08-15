@@ -23,10 +23,10 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Strict auth rate limit — 10 req / 15 min
+// Auth rate limit — 100 req / 15 min (loose for dev; tighten before production)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many auth attempts. Try again later.' }
@@ -51,6 +51,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const pushRoutes = require('./routes/pushRoutes');
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'CampusLink API is running' });
@@ -69,6 +70,7 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+app.use('/api/v1/push', pushRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 

@@ -17,6 +17,13 @@ const Navbar = ({ toggleSidebar }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!isDropdownOpen) return;
+    const close = (e) => { if (e.key === 'Escape') setIsDropdownOpen(false); };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [isDropdownOpen]);
+
+  useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -58,14 +65,20 @@ const Navbar = ({ toggleSidebar }) => {
         </Link>
 
         <div className="flex items-center gap-x-4 lg:gap-x-6">
-          <button type="button" onClick={() => setIsDark(!isDark)} className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+          <button
+            type="button"
+            onClick={() => setIsDark(!isDark)}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md"
+          >
             {isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
           </button>
 
           <Link
             to="/notifications"
             onClick={clearUnread}
-            className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative"
+            aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+            className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md"
           >
             <Bell className="size-6" />
             {unreadCount > 0 && (
@@ -76,8 +89,14 @@ const Navbar = ({ toggleSidebar }) => {
           <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-200 dark:lg:bg-gray-700" aria-hidden="true" />
 
           <div className="relative">
-            <button type="button" className="-m-1.5 flex items-center p-1.5" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-              <span className="sr-only">Open user menu</span>
+            <button
+              type="button"
+              className="-m-1.5 flex items-center p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-md"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="menu"
+              aria-label="Open user menu"
+            >
               <Avatar user={user} size="sm" />
               <span className="hidden lg:flex lg:items-center">
                 <span className="ml-4 text-sm font-semibold leading-6 text-gray-900 dark:text-white">

@@ -34,6 +34,17 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Auth endpoints — pass the 401 straight through so the form can show the
+    // real error message ("Invalid email or password", etc.).
+    if (
+      originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/register') ||
+      originalRequest.url?.includes('/auth/forgot-password') ||
+      originalRequest.url?.includes('/auth/reset-password')
+    ) {
+      return Promise.reject(error);
+    }
+
     // Never retry the refresh or logout endpoints themselves
     if (
       originalRequest.url?.includes('/auth/refresh') ||

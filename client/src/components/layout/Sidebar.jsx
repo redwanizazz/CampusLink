@@ -2,9 +2,11 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, Users, MessageSquare, GraduationCap, Calendar, Bell, Search, Shield, X } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useSocketStore } from '../../store/useSocketStore';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const { user } = useAuthStore();
+  const { unreadCount: unreadMessageCount, clearUnread: clearUnreadMessages } = useSocketStore();
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
@@ -22,6 +24,11 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const close = () => { if (window.innerWidth < 1024) setIsOpen(false); };
 
+  const handleNavClick = (item) => {
+    if (item.name === 'Messages') clearUnreadMessages();
+    close();
+  };
+
   return (
     <>
       {isOpen && (
@@ -38,19 +45,27 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-0.5 px-2">
-            {navItems.map(item => (
-              <NavLink
-                key={item.name}
-                to={item.path}
-                onClick={close}
-                className={({ isActive }) =>
-                  `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${isActive ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'}`
-                }
-              >
-                <item.icon className="mr-3 flex-shrink-0 size-5" />
-                {item.name}
-              </NavLink>
-            ))}
+            {navItems.map(item => {
+              const showBadge = item.name === 'Messages' && unreadMessageCount > 0;
+              return (
+                <NavLink
+                  key={item.name}
+                  to={item.path}
+                  onClick={() => handleNavClick(item)}
+                  className={({ isActive }) =>
+                    `group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${isActive ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'}`
+                  }
+                >
+                  <item.icon className="mr-3 flex-shrink-0 size-5" />
+                  <span className="flex-1">{item.name}</span>
+                  {showBadge && (
+                    <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-semibold">
+                      {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                    </span>
+                  )}
+                </NavLink>
+              );
+            })}
           </nav>
         </div>
       </aside>
